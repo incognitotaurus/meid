@@ -873,7 +873,9 @@ async function fetchGNewsAPI(){
     updateApiChip(); // ensure chip shows LIMIT state
     return [];
   }
-  if(!navigator.onLine) return [];
+  // NOTE: navigator.onLine is intentionally NOT used here.
+  // Some browsers/CDN environments incorrectly report false when the page is deployed
+  // on Cloudflare Pages or behind a proxy. We let the fetch fail naturally instead.
   var q=encodeURIComponent('israel OR iran OR "saudi arabia" OR UAE OR kuwait OR qatar OR gaza OR hamas OR hezbollah OR houthi');
   var url='https://gnews.io/api/v4/search?q='+q+'&lang=en&country=any&max=20&sortby=publishedAt&apikey='+key;
   var r;
@@ -1057,11 +1059,27 @@ function firstSuccess(promises){
   });
 }
 
-// ── Fetch a single feed via all 3 proxies in parallel, take first success ──
-async function fetchFeed(feedUrl, src, isGN){
-  const T=adaptiveTimeout(9000);
-  // rss2json handles Google News very well — always include it
-  var p1=fetch(
+// ══════════════════════════════════════════
+//  PROXY STRATEGY
+//  Root cause of "1/18 feeds live":
+//  Sending 18 simultaneous requests to rss2json triggers its rate limiter.
+//  Fix: rss2json is reserved ONLY for Google News feeds (8 total), sent in
+//  small batches. Direct RSS feeds use allorigins + corsproxy instead.
+// ══════════════════════════════════════════
+
+// Shared item mapper from rss2json JSON response
+function mapRss2jsonItems(items, src){
+  return items.filter(function(i){return i.title;}).map(function(i){
+    return{title:i.title||'',description:i.description||'',link:i.link||'',
+      pubDate:i.pubDate||'',_src:src,
+      _countries:tagCountries((i.title||'')+' '+(i.description||'')),
+      _brk:/breaking|urgent|alert/i.test(i.title||'')};
+  });
+}
+
+// ── Proxy 1: rss2json (best for Google News; reserved exclusively for GN feeds) ──
+function fetchViaRss2json(feedUrl, src, T){
+  return fetch(
     'https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(feedUrl)+'&count=30',
     {signal:mkSignal(T)}
   ).then(function(r){
@@ -1069,19 +1087,13 @@ async function fetchFeed(feedUrl, src, isGN){
     return r.json();
   }).then(function(j){
     if(j.status!=='ok'||!j.items||!j.items.length) throw new Error('rss2json empty');
-    return j.items.filter(function(i){return i.title;}).map(function(i){
-      return{title:i.title||'',description:i.description||'',link:i.link||'',
-        pubDate:i.pubDate||'',_src:src,
-        _countries:tagCountries((i.title||'')+' '+(i.description||'')),
-        _brk:/breaking|urgent|alert/i.test(i.title||'')};
-    });
+    return mapRss2jsonItems(j.items, src);
   });
+}
 
-  // For Google News feeds, rss2json is enough — skip extra proxies to save quota
-  if(isGN) return p1;
-
-  // allorigins — no optional chaining for old Safari
-  var p2=fetch(
+// ── Proxy 2: allorigins (used for direct RSS feeds) ──
+function fetchViaAllorigins(feedUrl, src, T){
+  return fetch(
     'https://api.allorigins.win/get?url='+encodeURIComponent(feedUrl),
     {signal:mkSignal(T)}
   ).then(function(r){
@@ -1094,9 +1106,11 @@ async function fetchFeed(feedUrl, src, isGN){
     if(!items.length) throw new Error('allorigins empty');
     return items;
   });
+}
 
-  // corsproxy.io
-  var p3=fetch(
+// ── Proxy 3: corsproxy.io (used for direct RSS feeds alongside allorigins) ──
+function fetchViaCorsproxy(feedUrl, src, T){
+  return fetch(
     'https://corsproxy.io/?'+encodeURIComponent(feedUrl),
     {signal:mkSignal(T)}
   ).then(function(r){
@@ -1107,48 +1121,87 @@ async function fetchFeed(feedUrl, src, isGN){
     if(!items.length) throw new Error('corsproxy empty');
     return items;
   });
+}
 
-  return firstSuccess([p1,p2,p3]);
+// ── Proxy 4: thingproxy (fallback for direct feeds) ──
+function fetchViaThingproxy(feedUrl, src, T){
+  return fetch(
+    'https://thingproxy.freeboard.io/fetch/'+feedUrl,
+    {signal:mkSignal(T)}
+  ).then(function(r){
+    if(!r.ok) throw new Error('thingproxy '+r.status);
+    return r.text();
+  }).then(function(txt){
+    var items=parseRSSXML(txt,src);
+    if(!items.length) throw new Error('thingproxy empty');
+    return items;
+  });
+}
+
+// ── Fetch a single feed ──
+// Google News feeds → rss2json ONLY (batched in fetchNews to avoid rate limit)
+// Direct RSS feeds  → allorigins + corsproxy + thingproxy in parallel race
+async function fetchFeed(feedUrl, src, isGN){
+  var T=adaptiveTimeout(10000);
+  if(isGN){
+    // rss2json is best for Google News — it returns clean JSON and handles GN encoding
+    return fetchViaRss2json(feedUrl, src, T);
+  }
+  // Direct feeds: race 3 proxies — do NOT use rss2json here to protect its rate limit
+  return firstSuccess([
+    fetchViaAllorigins(feedUrl, src, T),
+    fetchViaCorsproxy(feedUrl, src, T),
+    fetchViaThingproxy(feedUrl, src, T),
+  ]);
 }
 
 // Tracks consecutive total failures for escalating retry delay
 var _fetchFailCount=0;
 
 async function fetchNews(){
-  const feed=document.getElementById('nfeed');
+  var feed=document.getElementById('nfeed');
   feed.innerHTML='<div class="spin-wrap"><div class="spinner"></div><div class="spin-lbl">FETCHING INTELLIGENCE DATA\u2026</div></div>';
   setConn('syncing');
 
-  // Abort immediately if browser reports no connection
-  if(!navigator.onLine){
-    setConn('offline');
-    showOfflineBanner();
-    feed.innerHTML='<div class="err">\u26a0 No internet connection detected.<br><span style="font-size:9px;opacity:.7">Check your network. Dashboard will auto-refresh when reconnected.</span></div>';
-    renderFallback();
-    return;
+  // Split feeds by type so we can use the right proxy per type
+  var gnFeeds=FEEDS.filter(function(f){return f.gn;});
+  var directFeeds=FEEDS.filter(function(f){return !f.gn;});
+  var allResults=[];
+
+  // ── Google News feeds: send in batches of 3 with 400ms gap ──
+  // rss2json rate-limits at ~5 req/s; batching keeps us well under
+  var GN_BATCH=3;
+  for(var gi=0;gi<gnFeeds.length;gi+=GN_BATCH){
+    var gnBatch=gnFeeds.slice(gi,gi+GN_BATCH);
+    var gnBatchRes=await Promise.allSettled(gnBatch.map(function(f){
+      return fetchFeed(f.url,f.name,true);
+    }));
+    allResults=allResults.concat(gnBatchRes.map(function(r,bi){return{r:r,f:gnFeeds[gi+bi]};}));
+    if(gi+GN_BATCH<gnFeeds.length) await sleep(400);
   }
 
-  // Round 1 — fetch all feeds in parallel
-  var round1=await Promise.allSettled(FEEDS.map(function(f){
-    return fetchFeed(f.url,f.name,f.gn||false);
+  // ── Direct RSS feeds: all in parallel (allorigins/corsproxy handle higher concurrency) ──
+  var directRes=await Promise.allSettled(directFeeds.map(function(f){
+    return fetchFeed(f.url,f.name,false);
   }));
+  directRes.forEach(function(r,i){allResults.push({r:r,f:directFeeds[i]});});
 
-  // Identify which feeds failed
+  // Tally results
   var failedFeeds=[];
   var ok=0;
   allNews=[];
-  round1.forEach(function(r,i){
-    if(r.status==='fulfilled'&&r.value&&r.value.length){
+  allResults.forEach(function(x){
+    if(x.r.status==='fulfilled'&&x.r.value&&x.r.value.length){
       ok++;
-      allNews=allNews.concat(r.value);
+      allNews=allNews.concat(x.r.value);
     } else {
-      failedFeeds.push(FEEDS[i]);
+      if(x.f) failedFeeds.push(x.f);
     }
   });
 
-  // Round 2 — retry failed feeds once (with 1.5s delay) if not too many failed
-  if(failedFeeds.length>0 && failedFeeds.length<=FEEDS.length){
-    await sleep(1500);
+  // ── Round 2: retry failed feeds once (2s delay) ──
+  if(failedFeeds.length>0){
+    await sleep(2000);
     var round2=await Promise.allSettled(failedFeeds.map(function(f){
       return fetchFeed(f.url,f.name,f.gn||false);
     }));
@@ -1160,8 +1213,10 @@ async function fetchNews(){
     });
   }
 
-  // GNews API (supplemental — runs after RSS so quota is preserved)
-  const napiItems=await fetchGNewsAPI().catch(function(){return[];});
+  // ── GNews API (supplemental — runs after RSS so daily quota is preserved) ──
+  // navigator.onLine is intentionally NOT checked here — some browsers/environments
+  // incorrectly report false when deployed on CDNs. Let the fetch fail naturally.
+  var napiItems=await fetchGNewsAPI().catch(function(){return[];});
 
   // Merge GNews — dedupe by title prefix
   var seen={};
@@ -1184,22 +1239,22 @@ async function fetchNews(){
   if(allNews.length===0){
     _fetchFailCount++;
     setConn('offline');
-    var retryMs=Math.min(30000, 5000*_fetchFailCount); // escalating retry: 5s, 10s, 15s … 30s
-    feed.innerHTML='<div class="err">\u26a0 All live feeds unreachable.<br>'
-      +'<span style="font-size:9px;opacity:.7">Check CORS restrictions — deploy to Cloudflare Pages for best compatibility. '
-      +'Auto-retrying in '+Math.round(retryMs/1000)+'s…</span></div>';
+    var retryMs=Math.min(60000, 10000*_fetchFailCount); // 10s, 20s, 30s … 60s
+    feed.innerHTML='<div class="err">\u26a0 Live feeds temporarily unreachable — proxy servers may be busy.<br>'
+      +'<span style="font-size:9px;opacity:.7">Verified cached intelligence shown below \xb7 Auto-retrying in '
+      +Math.round(retryMs/1000)+'s\u2026</span></div>';
     renderFallback();
     setTimeout(fetchNews, retryMs);
     return;
   }
 
-  // Partial success warning
+  // At least some data — clear failure counter and show status
   _fetchFailCount=0;
-  var totalLive=ok;
-  var statusTxt=totalLive+'/'+FEEDS.length+' feeds live \xb7 '+new Date().toLocaleTimeString();
-  if(totalLive<FEEDS.length*0.4){
-    setConn('syncing'); // amber — partial
-    statusTxt='\u26a0 '+statusTxt+' (limited)';
+  var statusTxt=ok+'/'+FEEDS.length+' feeds live \xb7 '+new Date().toLocaleTimeString();
+  if(ok<3){
+    setConn('syncing'); // amber indicator for very limited results
+    statusTxt='\u26a0 '+statusTxt+' \u2014 proxies throttling, retrying\u2026';
+    setTimeout(fetchNews, 15000); // auto-retry sooner when limited
   } else {
     setConn('ok');
   }
