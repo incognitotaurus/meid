@@ -736,17 +736,91 @@ function ago(ds){
   return Math.floor(diff/86400)+'d ago';
 }
 
-async function fetchFeed(url,fallbackName){
-  const r=await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}&count=25&api_key=`);
-  if(!r.ok)throw new Error('http');
-  const j=await r.json();
-  if(j.status!=='ok')throw new Error('rss');
-  return j.items.map(i=>({
-    ...i,
-    _src:fallbackName,
-    _countries:tagCountries(i.title+' '+(i.description||'')),
-    _brk:/breaking|urgent|alert/i.test(i.title),
-  }));
+// ── Feed sources (Reuters public RSS was removed; replaced with working alternatives) ──
+const FEEDS=[
+  {url:'https://feeds.bbci.co.uk/news/world/middle_east/rss.xml',   name:'BBC News'},
+  {url:'https://www.aljazeera.com/xml/rss/all.xml',                 name:'Al Jazeera'},
+  {url:'https://www.timesofisrael.com/feed/',                       name:'Times of Israel'},
+  {url:'https://www.jpost.com/rss/rssfeedsheadlines.aspx',          name:'Jerusalem Post'},
+  {url:'https://rss.nytimes.com/services/xml/rss/nyt/MiddleEast.xml',name:'New York Times'},
+  {url:'https://www.france24.com/en/middle-east/rss',               name:'France 24'},
+  {url:'https://www.theguardian.com/world/middleeast/rss',          name:'The Guardian'},
+  {url:'https://www.arabnews.com/rss.xml',                          name:'Arab News'},
+];
+
+// ── Parse raw RSS/XML string via DOMParser ──
+function parseRSSXML(xmlStr, src){
+  try{
+    const xml=new DOMParser().parseFromString(xmlStr,'text/xml');
+    const parseErr=xml.querySelector('parsererror');
+    if(parseErr) throw new Error('XML parse error');
+    return [...xml.querySelectorAll('item')].map(item=>{
+      const g=tag=>item.querySelector(tag)?.textContent?.trim()||'';
+      const a=(tag,attr)=>item.querySelector(tag)?.getAttribute(attr)||'';
+      const title=g('title');
+      const desc=g('description')||g('summary');
+      const link=g('link')||a('link','href')||g('guid');
+      const pubDate=g('pubDate')||g('published')||g('updated');
+      if(!title||title.includes('CDATA')) return null;
+      return{title,description:desc,link,pubDate,_src:src,
+        _countries:tagCountries(title+' '+desc),
+        _brk:/breaking|urgent|alert/i.test(title)};
+    }).filter(Boolean);
+  }catch(e){return[];}
+}
+
+// ── 3-proxy waterfall: rss2json → allorigins → corsproxy ──
+async function fetchFeed(feedUrl, src){
+  const T=7000; // 7 s timeout per proxy attempt
+
+  // PROXY 1 — rss2json.com (returns parsed JSON)
+  try{
+    const r=await fetch(
+      `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}&count=25`,
+      {signal:AbortSignal.timeout(T)}
+    );
+    if(r.ok){
+      const j=await r.json();
+      if(j.status==='ok'&&j.items?.length){
+        return j.items.map(i=>({
+          title:i.title||'',description:i.description||'',
+          link:i.link||'',pubDate:i.pubDate||'',_src:src,
+          _countries:tagCountries((i.title||'')+' '+(i.description||'')),
+          _brk:/breaking|urgent|alert/i.test(i.title||''),
+        })).filter(i=>i.title);
+      }
+    }
+  }catch(e){/* try next */}
+
+  // PROXY 2 — allorigins.win (returns raw XML inside JSON wrapper)
+  try{
+    const r=await fetch(
+      `https://api.allorigins.win/get?url=${encodeURIComponent(feedUrl)}`,
+      {signal:AbortSignal.timeout(T)}
+    );
+    if(r.ok){
+      const j=await r.json();
+      if(j.contents&&j.status?.http_code===200){
+        const items=parseRSSXML(j.contents,src);
+        if(items.length) return items;
+      }
+    }
+  }catch(e){/* try next */}
+
+  // PROXY 3 — corsproxy.io (returns raw XML)
+  try{
+    const r=await fetch(
+      `https://corsproxy.io/?${encodeURIComponent(feedUrl)}`,
+      {signal:AbortSignal.timeout(T)}
+    );
+    if(r.ok){
+      const text=await r.text();
+      const items=parseRSSXML(text,src);
+      if(items.length) return items;
+    }
+  }catch(e){/* all failed */}
+
+  throw new Error('All proxies failed for '+src);
 }
 
 async function fetchNews(){
@@ -754,41 +828,41 @@ async function fetchNews(){
   feed.innerHTML=`<div class="spin-wrap"><div class="spinner"></div><div class="spin-lbl">FETCHING INTELLIGENCE DATA…</div></div>`;
   setConn('syncing');
 
-  const FEEDS=[
-    {url:'https://feeds.bbci.co.uk/news/world/middle_east/rss.xml',name:'BBC News'},
-    {url:'https://feeds.reuters.com/reuters/topNews',name:'Reuters'},
-    {url:'https://www.aljazeera.com/xml/rss/all.xml',name:'Al Jazeera'},
-    {url:'https://www.timesofisrael.com/feed/',name:'Times of Israel'},
-    {url:'https://www.jpost.com/rss/rssfeedsheadlines.aspx',name:'Jerusalem Post'},
-    {url:'https://rss.app/feeds/v1.1/tObUMBwQvLbYCeDC.json',name:'AP News'},
-  ];
-
-  // Run RSS feeds + NewsAPI in parallel
-  const [rssResults, napiItems] = await Promise.all([
+  // Run all feeds + NewsAPI concurrently
+  const [rssResults, napiItems]=await Promise.all([
     Promise.allSettled(FEEDS.map(f=>fetchFeed(f.url,f.name))),
     fetchNewsAPI().catch(()=>[]),
   ]);
 
+  // Tally successes for status display
+  const ok=rssResults.filter(r=>r.status==='fulfilled'&&r.value.length>0);
+  const fail=rssResults.filter(r=>r.status==='rejected'||!r.value?.length);
+
   allNews=[];
   rssResults.forEach(r=>{ if(r.status==='fulfilled') allNews.push(...r.value); });
 
-  // Merge NewsAPI results — dedupe by title similarity
-  const existingTitles=new Set(allNews.map(x=>x.title.toLowerCase().slice(0,60)));
-  const fresh=napiItems.filter(a=>!existingTitles.has(a.title.toLowerCase().slice(0,60)));
-  allNews.push(...fresh);
+  // Merge NewsAPI — dedupe by title prefix
+  const seen=new Set(allNews.map(x=>x.title.toLowerCase().slice(0,60)));
+  napiItems.filter(a=>!seen.has(a.title.toLowerCase().slice(0,60))).forEach(a=>allNews.push(a));
 
   allNews.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
   updateApiChip();
 
   if(allNews.length===0){
     setConn('offline');
-    feed.innerHTML=`<div class="err">⚠ Live feed temporarily unavailable — displaying verified cached intelligence below</div>`;
+    feed.innerHTML=`<div class="err">
+      ⚠ All ${FEEDS.length} live feeds unreachable.<br>
+      <span style="font-size:9px;opacity:.7">This usually means the page is opened as a local file.<br>
+      Deploy to Cloudflare Pages for live data — displaying cached intelligence below.</span>
+    </div>`;
     renderFallback();
     return;
   }
 
   setConn('ok');
-  document.getElementById('upd').textContent='Updated: '+new Date().toLocaleTimeString()+' local';
+  const ts=new Date().toLocaleTimeString();
+  document.getElementById('upd').textContent=`${ok.length}/${FEEDS.length} feeds live · ${ts}`;
+  if(fail.length>0) console.warn('MEID: Failed feeds:',fail.map((_,i)=>FEEDS[i]?.name).filter(Boolean));
   renderNews();
 }
 
