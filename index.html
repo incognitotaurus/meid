@@ -9,8 +9,6 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="format-detection" content="telephone=no">
 <link rel="dns-prefetch" href="https://unpkg.com">
-<link rel="dns-prefetch" href="https://api.rss2json.com">
-<link rel="dns-prefetch" href="https://api.allorigins.win">
 <link rel="dns-prefetch" href="https://basemaps.cartocdn.com">
 <title>MEID · Middle East Intelligence Dashboard</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -28,7 +26,6 @@ body{font-family:-apple-system,'Segoe UI',system-ui,sans-serif;background:var(--
 @media(max-width:700px){html,body{height:auto;overflow:visible}}
 
 /* ── SCANLINE OVERLAY ── */
-/* inset shorthand not in Safari<14.1 — use explicit props */
 body::after{content:'';position:fixed;top:0;left:0;right:0;bottom:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.04) 3px,rgba(0,0,0,.04) 4px);pointer-events:none;z-index:9999}
 
 /* ── HEADER ── */
@@ -71,13 +68,9 @@ body::after{content:'';position:fixed;top:0;left:0;right:0;bottom:0;background:r
 
 /* ── SIDEBAR ── */
 .sidebar{background:var(--bg1);border-right:1px solid var(--border);overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
-/* Webkit scrollbar */
 .sidebar::-webkit-scrollbar{width:3px}
 .sidebar::-webkit-scrollbar-thumb{background:var(--dim);border-radius:2px}
-/* Firefox scrollbar */
-.sidebar{scrollbar-width:thin;scrollbar-color:var(--dim) transparent}
-/* iOS momentum scrolling */
-.sidebar{-webkit-overflow-scrolling:touch}
+.sidebar{scrollbar-width:thin;scrollbar-color:var(--dim) transparent;-webkit-overflow-scrolling:touch}
 
 .sec-lbl{font-size:9px;font-weight:700;letter-spacing:3px;color:var(--muted);text-transform:uppercase;padding-bottom:6px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;margin-bottom:2px}
 .sec-lbl::before{content:'';width:3px;height:3px;border-radius:50%;background:var(--blue)}
@@ -128,7 +121,7 @@ body::after{content:'';position:fixed;top:0;left:0;right:0;bottom:0;background:r
 
 /* ── MAP ── */
 .map-wrap{position:relative;overflow:hidden;background:var(--bg0)}
-#map{width:100%;height:100%;touch-action:none} /* touch-action:none lets Leaflet own all touch events */
+#map{width:100%;height:100%;touch-action:none}
 .map-badge{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:800;background:rgba(6,10,20,.92);border:1px solid rgba(0,200,255,.4);padding:5px 16px;border-radius:20px;font-size:9px;letter-spacing:3px;color:var(--blue);white-space:nowrap;pointer-events:none}
 .map-legend{position:absolute;bottom:28px;left:12px;z-index:800;background:rgba(6,10,20,.9);border:1px solid var(--border);padding:10px 12px;border-radius:6px}
 .ml-title{font-size:8px;color:var(--muted);letter-spacing:2px;margin-bottom:6px;text-transform:uppercase}
@@ -203,9 +196,8 @@ body::after{content:'';position:fixed;top:0;left:0;right:0;bottom:0;background:r
 .key-status{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:1px;margin-top:5px}
 .key-status.ok{background:rgba(0,229,122,.1);color:var(--green);border:1px solid rgba(0,229,122,.3)}
 .key-status.missing{background:rgba(255,123,41,.1);color:var(--orange);border:1px solid rgba(255,123,41,.3)}
-/* ════════════════════════════════════════
-   RESPONSIVE — TABLET  (701 – 1100 px)
-   ════════════════════════════════════════ */
+
+/* RESPONSIVE */
 @media screen and (max-width:1100px) and (min-width:701px){
   .layout{display:grid;grid-template-columns:230px 1fr;grid-template-rows:1fr 380px;height:calc(100vh - 90px)}
   .sidebar{grid-column:1;grid-row:1 / 3;overflow-y:auto}
@@ -216,24 +208,10 @@ body::after{content:'';position:fixed;top:0;left:0;right:0;bottom:0;background:r
   .hdr-desc{display:none}
   .brand-sub{display:none}
 }
-
-/* ════════════════════════════════════════
-   RESPONSIVE — MOBILE  (≤ 700 px)
-   ════════════════════════════════════════ */
 @media screen and (max-width:700px){
-  /* Unlock page scroll */
   html,body{height:auto!important;overflow:visible!important;overflow-x:hidden!important}
-
-  /* Layout: vertical stack, no overflow clipping */
-  .layout{
-    display:-webkit-box;display:-ms-flexbox;display:flex;
-    -webkit-box-orient:vertical;-webkit-box-direction:normal;
-    -ms-flex-direction:column;flex-direction:column;
-    overflow:visible;-ms-flex:none;flex:none;width:100%
-  }
-
-  /* ── Header ── */
-  .hdr{padding:8px 10px;-ms-flex-wrap:wrap;flex-wrap:wrap;gap:6px}
+  .layout{display:flex;flex-direction:column;overflow:visible;flex:none;width:100%}
+  .hdr{padding:8px 10px;flex-wrap:wrap;gap:6px}
   .hdr-center,.hdr-desc,.brand-sub,.conn{display:none!important}
   .hdr-brand{min-width:auto}
   .brand-id{font-size:11px;letter-spacing:2px}
@@ -241,35 +219,15 @@ body::after{content:'';position:fixed;top:0;left:0;right:0;bottom:0;background:r
   .clock{font-size:11px;letter-spacing:0}
   .upd{font-size:8px}
   #apiChipWrap{display:none!important}
-
-  /* ── Ticker ── */
   .ticker-bar{padding:4px 0}
   .tick{font-size:9.5px;padding:0 16px}
-
-  /* ── Sidebar: horizontal swipe strip ── */
-  .sidebar{
-    -webkit-box-orient:horizontal;-webkit-box-direction:normal;
-    -ms-flex-direction:row;flex-direction:row;
-    overflow-x:auto;overflow-y:hidden;
-    -webkit-overflow-scrolling:touch; /* iOS momentum scroll */
-    overscroll-behavior-x:contain;
-    padding:8px 10px;gap:8px;
-    border-right:none;border-bottom:1px solid var(--border);
-    scrollbar-width:none;-ms-overflow-style:none;
-    -ms-flex-negative:0;flex-shrink:0
-  }
+  .sidebar{flex-direction:row;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;padding:8px 10px;gap:8px;border-right:none;border-bottom:1px solid var(--border);scrollbar-width:none;flex-shrink:0}
   .sidebar::-webkit-scrollbar{display:none}
-  #ccards{
-    display:-webkit-box;display:-ms-flexbox;display:flex;
-    -ms-flex-direction:row;flex-direction:row;
-    gap:8px;min-width:-webkit-max-content;min-width:max-content
-  }
-  .ccard{min-width:200px;max-width:230px;-ms-flex-negative:0;flex-shrink:0}
-  .ccard:hover,.ccard:active{-webkit-transform:none!important;transform:none!important}
+  #ccards{display:flex;flex-direction:row;gap:8px;min-width:max-content}
+  .ccard{min-width:200px;max-width:230px;flex-shrink:0}
+  .ccard:hover,.ccard:active{transform:none!important}
   #threatMeter,#timeline,.sec-lbl:not(:first-of-type){display:none!important}
-
-  /* ── Map: explicit height so Leaflet initialises ── */
-  .map-wrap{height:320px;min-height:320px;-ms-flex-negative:0;flex-shrink:0;width:100%}
+  .map-wrap{height:320px;min-height:320px;flex-shrink:0;width:100%}
   #map{height:320px!important;min-height:320px!important}
   .map-badge{font-size:8px;letter-spacing:1px;padding:3px 8px;top:8px}
   .map-stats{top:8px;right:8px;gap:3px}
@@ -277,38 +235,21 @@ body::after{content:'';position:fixed;top:0;left:0;right:0;bottom:0;background:r
   .ms-v{font-size:12px}
   .ms-l{font-size:7px}
   .map-legend{display:none}
-
-  /* ── News panel: natural height, page scrolls ── */
-  .news-panel{
-    -ms-flex:none;flex:none;
-    border-left:none;border-top:1px solid var(--border);
-    min-height:0;overflow:visible
-  }
-  .np-body{
-    max-height:none!important;overflow-y:visible!important;
-    -webkit-overflow-scrolling:auto
-  }
+  .news-panel{flex:none;border-left:none;border-top:1px solid var(--border);min-height:0;overflow:visible}
+  .np-body{max-height:none!important;overflow-y:visible!important;-webkit-overflow-scrolling:auto}
   .np-filters{gap:4px;padding:6px 10px}
-
-  /* ── Touch targets: minimum 44px ── */
   .fb{min-height:40px;padding:8px 11px;font-size:10px}
   .nc{padding:12px;min-height:44px}
   .modal-btn{min-height:44px;padding:10px 18px}
-  .modal-close{min-width:44px;min-height:44px;display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-align:center;-ms-flex-align:center;align-items:center;-webkit-box-pack:center;-ms-flex-pack:center;justify-content:center}
-
-  /* ── Modal ── */
-  .modal-bg{-webkit-box-align:flex-end;-ms-flex-align:flex-end;align-items:flex-end} /* sheet from bottom on mobile */
+  .modal-close{min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center}
+  .modal-bg{align-items:flex-end}
   .modal{width:100%;border-radius:16px 16px 0 0;max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 }
-
-/* Extra-small (≤ 380 px) */
 @media screen and (max-width:380px){
   .ccard{min-width:175px}
   .map-wrap,.map-wrap #map{height:270px!important;min-height:270px!important}
   .hdr{padding:6px 8px}
 }
-
-/* Leaflet popup override */
 .leaflet-popup-content-wrapper{background:rgba(6,10,20,.97)!important;border:1px solid rgba(0,200,255,.4)!important;color:var(--text)!important;border-radius:6px!important;box-shadow:0 0 20px rgba(0,200,255,.15)!important}
 .leaflet-popup-tip{background:rgba(0,200,255,.4)!important}
 .leaflet-popup-content{margin:10px 14px!important}
@@ -319,7 +260,6 @@ body::after{content:'';position:fixed;top:0;left:0;right:0;bottom:0;background:r
 </head>
 <body>
 
-<!-- ═══════════ HEADER ═══════════ -->
 <header class="hdr">
   <div class="hdr-brand">
     <div class="brand-orb"></div>
@@ -345,27 +285,20 @@ body::after{content:'';position:fixed;top:0;left:0;right:0;bottom:0;background:r
   </div>
 </header>
 
-<!-- ═══════════ TICKER ═══════════ -->
 <div class="ticker-bar">
   <div class="ticker-inner" id="ticker"></div>
 </div>
 
-<!-- ═══════════ MAIN LAYOUT ═══════════ -->
 <div class="layout">
-
-  <!-- LEFT: Country Status + Timeline -->
   <aside class="sidebar">
     <div class="sec-lbl">Country Status</div>
     <div id="ccards"></div>
-
     <div class="sec-lbl" style="margin-top:6px">Threat Index</div>
     <div class="threat-meter" id="threatMeter"></div>
-
     <div class="sec-lbl" style="margin-top:6px">Recent Events</div>
     <div class="timeline" id="timeline"></div>
   </aside>
 
-  <!-- CENTER: Map -->
   <div class="map-wrap">
     <div class="map-badge">▲ OPERATIONAL THEATER — MIDDLE EAST</div>
     <div id="map"></div>
@@ -380,7 +313,6 @@ body::after{content:'';position:fixed;top:0;left:0;right:0;bottom:0;background:r
     </div>
   </div>
 
-  <!-- RIGHT: News Feed -->
   <div class="news-panel">
     <div class="np-head">
       <div class="sec-lbl" style="border:none;margin:0;padding:0;justify-content:space-between">
@@ -401,17 +333,14 @@ body::after{content:'';position:fixed;top:0;left:0;right:0;bottom:0;background:r
       <div class="spin-wrap"><div class="spinner"></div><div class="spin-lbl">FETCHING INTELLIGENCE…</div></div>
     </div>
   </div>
+</div>
 
-</div><!-- /layout -->
-
-<!-- ═══════════ SETTINGS MODAL ═══════════ -->
 <div class="modal-bg" id="settingsModal" onclick="handleModalBgClick(event)">
   <div class="modal" onclick="event.stopPropagation()">
     <div class="modal-hdr">
       <div class="modal-title">⚙ GNEWS API CONFIGURATION</div>
       <button class="modal-close" onclick="closeSettings()">✕</button>
     </div>
-
     <div class="modal-section">
       <div class="modal-lbl">API Key</div>
       <input class="modal-input" id="apiKeyInput" type="password" placeholder="Paste your GNews API key here…" autocomplete="off" spellcheck="false"/>
@@ -421,7 +350,6 @@ body::after{content:'';position:fixed;top:0;left:0;right:0;bottom:0;background:r
         — free tier gives 100 requests/day with full CORS support. Key is saved locally in your browser.
       </div>
     </div>
-
     <div class="modal-section">
       <div class="modal-lbl">Daily Usage (resets at midnight)</div>
       <div class="usage-bar-bg"><div class="usage-bar" id="usageBar" style="width:0%;background:var(--green)"></div></div>
@@ -430,7 +358,6 @@ body::after{content:'';position:fixed;top:0;left:0;right:0;bottom:0;background:r
         <span id="usageLeft" style="color:var(--green)">100 remaining</span>
       </div>
     </div>
-
     <div class="modal-row">
       <button class="modal-btn primary" onclick="saveAndApply()">✓ SAVE &amp; CONNECT</button>
       <button class="modal-btn danger" onclick="resetUsage()">↺ RESET COUNTER</button>
@@ -443,11 +370,13 @@ body::after{content:'';position:fixed;top:0;left:0;right:0;bottom:0;background:r
 "use strict";
 
 // ══════════════════════════════════════════
-//  CROSS-BROWSER POLYFILLS & HELPERS
+//  GLOBAL WORKER URL
 // ══════════════════════════════════════════
+const WORKER_URL = 'https://meid-proxy.ambarmore1007.workers.dev';
 
-// AbortSignal.timeout() — not in Safari < 16.4 or Firefox < 100
-// Polyfill: use AbortController + setTimeout instead
+// ══════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════
 function mkSignal(ms){
   const ctrl=new AbortController();
   const tid=setTimeout(()=>ctrl.abort(new DOMException('Timeout','TimeoutError')),ms);
@@ -455,15 +384,12 @@ function mkSignal(ms){
   return ctrl.signal;
 }
 
-// Safe localStorage wrapper (can be blocked in private browsing on some browsers)
 const LS={
   get(k){try{return localStorage.getItem(k)}catch(e){return null}},
   set(k,v){try{localStorage.setItem(k,v)}catch(e){}},
   getJSON(k,def){try{const v=localStorage.getItem(k);return v?JSON.parse(v):def}catch(e){return def}},
 };
 
-// ── Network quality helpers ──
-// Returns timeout in ms scaled to connection quality
 function adaptiveTimeout(base){
   try{
     var c=navigator.connection||navigator.mozConnection||navigator.webkitConnection;
@@ -475,19 +401,8 @@ function adaptiveTimeout(base){
   return base;
 }
 
-// Retry a promise-returning function once after `delay` ms on failure
-function withRetry(fn, delay){
-  return fn().catch(function(){
-    return new Promise(function(resolve,reject){
-      setTimeout(function(){fn().then(resolve).catch(reject);}, delay||2000);
-    });
-  });
-}
-
-// Sleep helper
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
 
-// ── Online / offline banner ──
 var _offlineBanner=null;
 function showOfflineBanner(){
   if(_offlineBanner) return;
@@ -504,7 +419,7 @@ window.addEventListener('offline',function(){showOfflineBanner();setConn('offlin
 window.addEventListener('online', function(){hideOfflineBanner();fetchNews();});
 
 // ══════════════════════════════════════════
-//  CLOCK
+//  CLOCK & TICKER
 // ══════════════════════════════════════════
 (function clock(){
   const el=document.getElementById('clk');
@@ -515,9 +430,6 @@ window.addEventListener('online', function(){hideOfflineBanner();fetchNews();});
   t(); setInterval(t,1000);
 })();
 
-// ══════════════════════════════════════════
-//  TICKER
-// ══════════════════════════════════════════
 const TICKER_DATA=[
   {t:"IDF confirms ongoing multi-front operations — Northern Gaza, West Bank, and Lebanon border",u:true},
   {t:"Iran IRGC activates reserve units amid heightened regional tensions"},
@@ -540,7 +452,7 @@ const TICKER_DATA=[
 })();
 
 // ══════════════════════════════════════════
-//  COUNTRY DATA
+//  COUNTRY DATA & UI
 // ══════════════════════════════════════════
 const COUNTRIES=[
   {code:'ISR',flag:'🇮🇱',name:'Israel',cls:'c',threat:'CRITICAL',lvl:95,
@@ -563,7 +475,6 @@ const COUNTRIES=[
    ev:29,al:11,src:76},
 ];
 
-// Build country cards
 (function buildCards(){
   document.getElementById('ccards').innerHTML=COUNTRIES.map(c=>`
     <div class="ccard ${c.cls}" id="cc-${c.code}" onclick="focusCountry('${c.code}')">
@@ -584,7 +495,6 @@ const COUNTRIES=[
   `).join('');
 })();
 
-// Threat meter
 (function buildMeter(){
   const colors=['var(--red)','var(--orange)','var(--yellow)','var(--yellow)','var(--green)','var(--orange)'];
   document.getElementById('threatMeter').innerHTML=COUNTRIES.map((c,i)=>`
@@ -593,7 +503,6 @@ const COUNTRIES=[
   `).join('');
 })();
 
-// Timeline
 const TL=[
   {dot:'var(--red)',   time:'NOW',   txt:'IDF airstrike reported on weapons cache, Rafah corridor', src:'Reuters'},
   {dot:'var(--red)',   time:'-14m',  txt:'Rocket barrage from northern Gaza intercepted over Ashkelon', src:'Times of Israel'},
@@ -624,7 +533,6 @@ const TL=[
   `).join('');
 })();
 
-// Map stats
 (function buildMapStats(){
   document.getElementById('mapStats').innerHTML=`
     <div class="ms-card r"><div class="ms-v">9</div><div class="ms-l">ACTIVE ZONES</div></div>
@@ -637,28 +545,20 @@ const TL=[
 //  MAP
 // ══════════════════════════════════════════
 const map=L.map('map',{
-  center:[30,42],zoom:5,
-  zoomControl:true,
-  attributionControl:false,
-  tap:true,          // iOS Safari touch support
-  tapTolerance:15,   // larger tap tolerance on touch screens
-  touchZoom:true,
-  bounceAtZoomLimits:false,
+  center:[30,42],zoom:5, zoomControl:true, attributionControl:false,
+  tap:true, tapTolerance:15, touchZoom:true, bounceAtZoomLimits:false,
 });
 
-// Re-render map whenever window resizes (e.g. orientation change, panel reflow)
 let _resizeTimer;
 window.addEventListener('resize',function(){
   clearTimeout(_resizeTimer);
   _resizeTimer=setTimeout(function(){map.invalidateSize();},200);
 });
 
-// Dark tile layer
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
   attribution:'© OpenStreetMap © CARTO',subdomains:'abcd',maxZoom:19
 }).addTo(map);
 
-// Pulse animation injected once
 const pStyle=document.createElement('style');
 pStyle.textContent=`
   @keyframes pm{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.4);opacity:.7}}
@@ -679,83 +579,28 @@ function mkIcon(color,sz=12,ring=true){
 }
 
 const MARKERS=[
-  // ── ACTIVE CONFLICTS (red)
-  {la:31.354,ln:34.308,c:'var(--red)',s:20,ring:true,
-   title:'Gaza Strip',st:'ACTIVE CONFLICT',
-   desc:'IDF multi-axis ground and air operations ongoing. Humanitarian corridors contested. Iron Dome intercepts multiple daily.'},
-  {la:31.952,ln:35.233,c:'var(--red)',s:14,ring:true,
-   title:'West Bank',st:'ACTIVE CONFLICT',
-   desc:'IDF counter-terror operations in Jenin, Tulkarm, and Nablus. Settlement tensions elevated. Checkpoint incidents daily.'},
-  {la:33.270,ln:35.573,c:'var(--orange)',s:14,ring:true,
-   title:'S. Lebanon / Blue Line',st:'HIGH TENSION',
-   desc:'IDF airstrikes targeting Hezbollah weapons convoys and command nodes. Cross-border rocket fire ongoing.'},
-  {la:15.552,ln:48.516,c:'var(--red)',s:14,ring:true,
-   title:'Yemen — Houthi Control',st:'ACTIVE CONFLICT',
-   desc:'Houthi forces launching ballistic missiles and drone swarms toward Red Sea shipping and southern Israel. Coalition strikes ongoing.'},
-  {la:24.068,ln:32.899,c:'var(--orange)',s:10,ring:false,
-   title:'Red Sea Shipping Corridor',st:'HIGH RISK',
-   desc:'Multiple commercial vessels attacked. US/UK coalition providing escort and strike suppression. Lloyd\'s war-risk premiums elevated.'},
-
-  // ── HIGH TENSION (orange)
-  {la:35.689,ln:51.389,c:'var(--orange)',s:14,ring:true,
-   title:'Tehran, Iran',st:'HIGH TENSION',
-   desc:'IRGC command and nuclear program coordination. 60% enrichment confirmed. Proxy network management from Iranian soil.'},
-  {la:33.450,ln:48.350,c:'var(--orange)',s:10,ring:false,
-   title:'Fordow Facility, Iran',st:'HIGH TENSION',
-   desc:'IAEA reports significant new centrifuge activity. Underground enrichment facility. Access request pending since November.'},
-  {la:27.117,ln:56.266,c:'var(--yellow)',s:10,ring:false,
-   title:'Strait of Hormuz',st:'MONITORING',
-   desc:'IRGC maritime exercises. Tanker harassment incidents. US 5th Fleet increased patrols. Critical global oil chokepoint.'},
-  {la:33.510,ln:36.291,c:'var(--orange)',s:10,ring:false,
-   title:'Damascus, Syria',st:'UNSTABLE',
-   desc:'Post-Assad transition government consolidating. Multiple armed factions active. Iranian proxy assets being targeted.'},
-  {la:33.802,ln:44.366,c:'var(--orange)',s:10,ring:false,
-   title:'Baghdad, Iraq',st:'ELEVATED',
-   desc:'PMF militia activity increasing. US embassy and military advisors under indirect fire. Rockets intercepted at BIAP.'},
-
-  // ── MONITORED (yellow)
-  {la:24.200,ln:53.960,c:'var(--yellow)',s:10,ring:false,
-   title:'Abu Dhabi, UAE',st:'MONITORING',
-   desc:'Air defense intercept reported. Patriot and C-RAM systems activated. Critical infrastructure on heightened security posture.'},
-  {la:25.204,ln:55.270,c:'var(--yellow)',s:8,ring:false,
-   title:'Dubai, UAE',st:'MONITORING',
-   desc:'Port activity normal. Financial sector monitoring Iran sanctions evasion. Diplomatic communications elevated.'},
-  {la:29.375,ln:47.977,c:'var(--yellow)',s:10,ring:false,
-   title:'Kuwait City',st:'MONITORING',
-   desc:'Camp Arifjan US base on heightened alert. Pre-positioned equipment inventories reviewed. Embassy staff partially relocated.'},
-
-  // ── KEY INSTALLATIONS (blue)
-  {la:32.085,ln:34.781,c:'var(--blue)',s:12,ring:false,
-   title:'Tel Aviv / IDF HQ',st:'COMMAND & CONTROL',
-   desc:'Israeli Defense Forces headquarters. Air Force command. National emergency protocols active. Iron Dome coordination center.'},
-  {la:31.768,ln:35.213,c:'var(--blue)',s:10,ring:false,
-   title:'Jerusalem',st:'KEY LOCATION',
-   desc:'Political capital under elevated security. Al-Aqsa compound access restricted. US Consulate General operational.'},
-  {la:25.283,ln:51.531,c:'var(--blue)',s:12,ring:false,
-   title:'Al Udeid AB / CENTCOM, Qatar',st:'US FORWARD HQ',
-   desc:'CENTCOM forward headquarters. B-52 and F-15 assets. Mediating ceasefire talks. ISR coverage for entire AOR.'},
-
-  // ── STABLE / DIPLOMATIC (green)
-  {la:24.453,ln:54.377,c:'var(--green)',s:9,ring:false,
-   title:'Abu Dhabi Intl Mediation',st:'DIPLOMATIC',
-   desc:'UAE diplomatic corps actively engaging all parties. Backchannel Iran-Israel messages facilitated through Emirati intermediaries.'},
-
-  // ── SAUDI ARABIA MARKERS ──
-  {la:24.688,ln:46.722,c:'var(--orange)',s:13,ring:true,
-   title:'Riyadh, Saudi Arabia',st:'HIGH TENSION',
-   desc:'MBS leading Arab coalition response. Saudi Patriot systems on active deployment. Normalisation with Israel paused pending Gaza resolution. US F-35 sale under review.'},
-  {la:21.485,ln:39.192,c:'var(--yellow)',s:10,ring:false,
-   title:'Jeddah, Saudi Arabia',st:'MONITORING',
-   desc:'Red Sea port on heightened maritime security alert. Saudi Coast Guard conducting extended patrols. Commercial shipping rerouted.'},
-  {la:26.289,ln:50.212,c:'var(--orange)',s:11,ring:true,
-   title:'Aramco / Dhahran',st:'HIGH RISK',
-   desc:'Saudi Aramco critical infrastructure on maximum security footing. Patriot air-defense batteries repositioned. Previous Houthi drone strike site.'},
-  {la:16.900,ln:43.120,c:'var(--red)',s:11,ring:true,
-   title:'Saudi-Yemen Border (Jizan)',st:'ACTIVE CONFLICT',
-   desc:'Ongoing Houthi cross-border missile and drone campaign. Saudi air defense engagements daily. Coalition airstrikes on Houthi launch sites.'},
-  {la:18.298,ln:42.565,c:'var(--yellow)',s:9,ring:false,
-   title:'Abha, Saudi Arabia',st:'MONITORING',
-   desc:'Abha International Airport previously targeted by Houthis. Air defense units forward-deployed. Civilian aviation risk elevated.'},
+  {la:31.354,ln:34.308,c:'var(--red)',s:20,ring:true, title:'Gaza Strip',st:'ACTIVE CONFLICT', desc:'IDF multi-axis ground and air operations ongoing. Humanitarian corridors contested. Iron Dome intercepts multiple daily.'},
+  {la:31.952,ln:35.233,c:'var(--red)',s:14,ring:true, title:'West Bank',st:'ACTIVE CONFLICT', desc:'IDF counter-terror operations in Jenin, Tulkarm, and Nablus. Settlement tensions elevated. Checkpoint incidents daily.'},
+  {la:33.270,ln:35.573,c:'var(--orange)',s:14,ring:true, title:'S. Lebanon / Blue Line',st:'HIGH TENSION', desc:'IDF airstrikes targeting Hezbollah weapons convoys and command nodes. Cross-border rocket fire ongoing.'},
+  {la:15.552,ln:48.516,c:'var(--red)',s:14,ring:true, title:'Yemen — Houthi Control',st:'ACTIVE CONFLICT', desc:'Houthi forces launching ballistic missiles and drone swarms toward Red Sea shipping and southern Israel. Coalition strikes ongoing.'},
+  {la:24.068,ln:32.899,c:'var(--orange)',s:10,ring:false, title:'Red Sea Shipping Corridor',st:'HIGH RISK', desc:'Multiple commercial vessels attacked. US/UK coalition providing escort and strike suppression. Lloyd\'s war-risk premiums elevated.'},
+  {la:35.689,ln:51.389,c:'var(--orange)',s:14,ring:true, title:'Tehran, Iran',st:'HIGH TENSION', desc:'IRGC command and nuclear program coordination. 60% enrichment confirmed. Proxy network management from Iranian soil.'},
+  {la:33.450,ln:48.350,c:'var(--orange)',s:10,ring:false, title:'Fordow Facility, Iran',st:'HIGH TENSION', desc:'IAEA reports significant new centrifuge activity. Underground enrichment facility. Access request pending since November.'},
+  {la:27.117,ln:56.266,c:'var(--yellow)',s:10,ring:false, title:'Strait of Hormuz',st:'MONITORING', desc:'IRGC maritime exercises. Tanker harassment incidents. US 5th Fleet increased patrols. Critical global oil chokepoint.'},
+  {la:33.510,ln:36.291,c:'var(--orange)',s:10,ring:false, title:'Damascus, Syria',st:'UNSTABLE', desc:'Post-Assad transition government consolidating. Multiple armed factions active. Iranian proxy assets being targeted.'},
+  {la:33.802,ln:44.366,c:'var(--orange)',s:10,ring:false, title:'Baghdad, Iraq',st:'ELEVATED', desc:'PMF militia activity increasing. US embassy and military advisors under indirect fire. Rockets intercepted at BIAP.'},
+  {la:24.200,ln:53.960,c:'var(--yellow)',s:10,ring:false, title:'Abu Dhabi, UAE',st:'MONITORING', desc:'Air defense intercept reported. Patriot and C-RAM systems activated. Critical infrastructure on heightened security posture.'},
+  {la:25.204,ln:55.270,c:'var(--yellow)',s:8,ring:false, title:'Dubai, UAE',st:'MONITORING', desc:'Port activity normal. Financial sector monitoring Iran sanctions evasion. Diplomatic communications elevated.'},
+  {la:29.375,ln:47.977,c:'var(--yellow)',s:10,ring:false, title:'Kuwait City',st:'MONITORING', desc:'Camp Arifjan US base on heightened alert. Pre-positioned equipment inventories reviewed. Embassy staff partially relocated.'},
+  {la:32.085,ln:34.781,c:'var(--blue)',s:12,ring:false, title:'Tel Aviv / IDF HQ',st:'COMMAND & CONTROL', desc:'Israeli Defense Forces headquarters. Air Force command. National emergency protocols active. Iron Dome coordination center.'},
+  {la:31.768,ln:35.213,c:'var(--blue)',s:10,ring:false, title:'Jerusalem',st:'KEY LOCATION', desc:'Political capital under elevated security. Al-Aqsa compound access restricted. US Consulate General operational.'},
+  {la:25.283,ln:51.531,c:'var(--blue)',s:12,ring:false, title:'Al Udeid AB / CENTCOM, Qatar',st:'US FORWARD HQ', desc:'CENTCOM forward headquarters. B-52 and F-15 assets. Mediating ceasefire talks. ISR coverage for entire AOR.'},
+  {la:24.453,ln:54.377,c:'var(--green)',s:9,ring:false, title:'Abu Dhabi Intl Mediation',st:'DIPLOMATIC', desc:'UAE diplomatic corps actively engaging all parties. Backchannel Iran-Israel messages facilitated through Emirati intermediaries.'},
+  {la:24.688,ln:46.722,c:'var(--orange)',s:13,ring:true, title:'Riyadh, Saudi Arabia',st:'HIGH TENSION', desc:'MBS leading Arab coalition response. Saudi Patriot systems on active deployment. Normalisation with Israel paused pending Gaza resolution. US F-35 sale under review.'},
+  {la:21.485,ln:39.192,c:'var(--yellow)',s:10,ring:false, title:'Jeddah, Saudi Arabia',st:'MONITORING', desc:'Red Sea port on heightened maritime security alert. Saudi Coast Guard conducting extended patrols. Commercial shipping rerouted.'},
+  {la:26.289,ln:50.212,c:'var(--orange)',s:11,ring:true, title:'Aramco / Dhahran',st:'HIGH RISK', desc:'Saudi Aramco critical infrastructure on maximum security footing. Patriot air-defense batteries repositioned. Previous Houthi drone strike site.'},
+  {la:16.900,ln:43.120,c:'var(--red)',s:11,ring:true, title:'Saudi-Yemen Border (Jizan)',st:'ACTIVE CONFLICT', desc:'Ongoing Houthi cross-border missile and drone campaign. Saudi air defense engagements daily. Coalition airstrikes on Houthi launch sites.'},
+  {la:18.298,ln:42.565,c:'var(--yellow)',s:9,ring:false, title:'Abha, Saudi Arabia',st:'MONITORING', desc:'Abha International Airport previously targeted by Houthis. Air defense units forward-deployed. Civilian aviation risk elevated.'},
 ];
 
 MARKERS.forEach(m=>{
@@ -768,7 +613,6 @@ MARKERS.forEach(m=>{
   `,{maxWidth:230});
 });
 
-// Country focus
 const FOCUS={ISR:[31.5,34.75,8],IRN:[32.4,53.7,6],UAE:[24.4,54.3,8],KWT:[29.4,47.9,9],QAT:[25.2,51.5,9],SAU:[24.0,45.0,6]};
 function focusCountry(code){
   const f=FOCUS[code];if(f)map.flyTo([f[0],f[1]],f[2],{duration:1.2});
@@ -776,11 +620,9 @@ function focusCountry(code){
 }
 
 // ══════════════════════════════════════════
-//  GNEWS API SETTINGS & RATE LIMITER
-//  Uses gnews.io — free tier has proper CORS support for browser use.
-//  NewsAPI free tier blocks CORS from deployed domains — do NOT use it here.
+//  GNEWS API SETTINGS
 // ══════════════════════════════════════════
-const KEY_STORE   = 'meid_gnews_key';   // changed from newsapi key
+const KEY_STORE   = 'meid_gnews_key';
 const USAGE_STORE = 'meid_gnews_usage';
 const DAILY_LIMIT = 100;
 
@@ -817,7 +659,6 @@ function updateApiChip(){
   }
 }
 
-// ── Settings modal ──
 function openSettings(){
   const modal=document.getElementById('settingsModal');
   modal.classList.add('open');
@@ -864,28 +705,21 @@ function resetUsage(){
   updateApiChip();
 }
 
-// ── GNews API fetch (gnews.io — free tier supports CORS from any domain) ──
-// Sign up free at https://gnews.io — 100 requests/day on free plan
 async function fetchGNewsAPI(){
   var key=getApiKey();
   if(!key) return [];
   if(!canRequest()){
-    updateApiChip(); // ensure chip shows LIMIT state
+    updateApiChip(); 
     return [];
   }
-  // NOTE: navigator.onLine is intentionally NOT used here.
-  // Some browsers/CDN environments incorrectly report false when the page is deployed
-  // on Cloudflare Pages or behind a proxy. We let the fetch fail naturally instead.
   var q=encodeURIComponent('israel OR iran OR "saudi arabia" OR UAE OR kuwait OR qatar OR gaza OR hamas OR hezbollah OR houthi');
   var url='https://gnews.io/api/v4/search?q='+q+'&lang=en&country=any&max=20&sortby=publishedAt&apikey='+key;
   var r;
   try{
     r=await fetch(url,{signal:mkSignal(adaptiveTimeout(12000))});
   }catch(e){
-    // Network error — don't count against quota
     throw new Error('GNews network error: '+e.message);
   }
-  // Handle quota / auth errors gracefully
   if(r.status===401||r.status===403){
     var chip=document.getElementById('apiChip');
     chip.textContent='⚙ GNEWS: BAD KEY';
@@ -900,7 +734,6 @@ async function fetchGNewsAPI(){
   }
   if(!r.ok) throw new Error('GNews HTTP '+r.status);
   var j=await r.json();
-  // GNews wraps errors in j.errors array
   if(j.errors&&j.errors.length) throw new Error('GNews: '+j.errors[0]);
   if(!j.articles||!j.articles.length) return [];
   incrementUsage();
@@ -920,27 +753,23 @@ async function fetchGNewsAPI(){
 }
 
 // ══════════════════════════════════════════
-//  GDELT PROJECT API  (primary news source)
-//  • Completely free — no API key required
-//  • Native CORS support — no proxy needed
-//  • Monitors 65,000+ news outlets globally
-//  • Real-time updates (< 15 min latency)
-//  Docs: https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/
+//  GDELT (ROUTED THROUGH WORKER)
 // ══════════════════════════════════════════
-
-// Parse GDELT date "20240315T123456Z" → ISO string
 function parseGDELTDate(d){
   if(!d||d.length<15) return '';
   return d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6,8)+'T'+d.slice(9,11)+':'+d.slice(11,13)+':'+d.slice(13,15)+'Z';
 }
 
-// One GDELT query returning up to maxrecords articles from the last 24h
 function gdeltQuery(q, maxrecords){
   var base='https://api.gdeltproject.org/api/v2/doc/doc';
   var params='?query='+encodeURIComponent(q)
     +'&mode=artlist&maxrecords='+(maxrecords||25)
     +'&format=json&TIMESPAN=1440&sort=DateDesc&sourcelang=english';
-  return fetch(base+params,{signal:mkSignal(adaptiveTimeout(12000))})
+    
+  var targetUrl = base + params;
+  var proxyUrl = WORKER_URL + '/?url=' + encodeURIComponent(targetUrl);
+
+  return fetch(proxyUrl,{signal:mkSignal(adaptiveTimeout(12000))})
     .then(function(r){
       if(!r.ok) throw new Error('GDELT '+r.status);
       return r.json();
@@ -951,12 +780,11 @@ function gdeltQuery(q, maxrecords){
         .filter(function(a){return a.title&&a.url;})
         .map(function(a){
           var src=a.domain||'GDELT';
-          // Strip tracker suffixes from Google News redirect URLs
           var link=a.url||'';
           if(link.indexOf('news.google.com')!==-1) link=a.url;
           return{
             title:a.title,
-            description:'',      // GDELT doesn't return body text
+            description:'',
             link:link,
             pubDate:parseGDELTDate(a.seendate),
             _src:src,
@@ -968,7 +796,6 @@ function gdeltQuery(q, maxrecords){
     });
 }
 
-// Run 4 targeted GDELT queries in parallel covering all monitored regions
 async function fetchGDELT(){
   var queries=[
     'israel idf hamas gaza war',
@@ -987,7 +814,7 @@ async function fetchGDELT(){
 }
 
 // ══════════════════════════════════════════
-//  NEWS FEED
+//  NEWS FEED & PARSING
 // ══════════════════════════════════════════
 let allNews=[], activeFilter='all';
 
@@ -1044,24 +871,17 @@ function ago(ds){
   return Math.floor(diff/86400)+'d ago';
 }
 
-// ══════════════════════════════════════════
-//  FEED SOURCES
-//  Google News topic feeds (primary — aggregate hundreds of outlets, work reliably via rss2json)
-//  + direct RSS feeds (secondary)
-// ══════════════════════════════════════════
 var E=encodeURIComponent;
 const GN='https://news.google.com/rss/search?hl=en&gl=US&ceid=US%3Aen&q=';
 const FEEDS=[
-  // ── Google News topic feeds (most reliable) ──
-  {url:GN+E('israel idf war hamas 2025'),          name:'Google·Israel',    gn:true},
-  {url:GN+E('iran nuclear irgc sanctions'),         name:'Google·Iran',      gn:true},
-  {url:GN+E('saudi arabia houthi yemen attack'),    name:'Google·Saudi',     gn:true},
-  {url:GN+E('gaza ceasefire hostages'),             name:'Google·Gaza',      gn:true},
-  {url:GN+E('hezbollah lebanon idf border'),        name:'Google·Lebanon',   gn:true},
-  {url:GN+E('middle east conflict war 2025'),       name:'Google·ME',        gn:true},
-  {url:GN+E('uae kuwait qatar gulf diplomacy'),     name:'Google·Gulf',      gn:true},
-  {url:GN+E('red sea houthi shipping attack'),      name:'Google·RedSea',    gn:true},
-  // ── Direct RSS feeds ──
+  {url:GN+E('israel idf war hamas 2025'),          name:'Google·Israel'},
+  {url:GN+E('iran nuclear irgc sanctions'),         name:'Google·Iran'},
+  {url:GN+E('saudi arabia houthi yemen attack'),    name:'Google·Saudi'},
+  {url:GN+E('gaza ceasefire hostages'),             name:'Google·Gaza'},
+  {url:GN+E('hezbollah lebanon idf border'),        name:'Google·Lebanon'},
+  {url:GN+E('middle east conflict war 2025'),       name:'Google·ME'},
+  {url:GN+E('uae kuwait qatar gulf diplomacy'),     name:'Google·Gulf'},
+  {url:GN+E('red sea houthi shipping attack'),      name:'Google·RedSea'},
   {url:'https://feeds.bbci.co.uk/news/world/middle_east/rss.xml',      name:'BBC News'},
   {url:'https://www.aljazeera.com/xml/rss/all.xml',                    name:'Al Jazeera'},
   {url:'https://www.timesofisrael.com/feed/',                          name:'Times of Israel'},
@@ -1074,7 +894,6 @@ const FEEDS=[
   {url:'https://www.middleeasteye.net/rss',                            name:'Middle East Eye'},
 ];
 
-// ── DOMParser-based RSS/Atom/XML parser (no optional chaining — works in all browsers) ──
 function parseRSSXML(xmlStr, src){
   try{
     var parser=new DOMParser();
@@ -1082,7 +901,7 @@ function parseRSSXML(xmlStr, src){
     var err=xml.getElementsByTagName('parsererror');
     if(err.length) throw new Error('parse error');
     var items=xml.getElementsByTagName('item');
-    if(!items.length) items=xml.getElementsByTagName('entry'); // Atom
+    if(!items.length) items=xml.getElementsByTagName('entry'); 
     var result=[];
     for(var i=0;i<items.length;i++){
       var item=items[i];
@@ -1093,12 +912,10 @@ function parseRSSXML(xmlStr, src){
       var title=g('title');
       var desc=g('description')||g('summary')||g('content');
       var link=g('link')||g('guid');
-      // Atom <link href="...">
       var linkEl=item.getElementsByTagName('link');
       if(linkEl.length&&linkEl[0].getAttribute('href')) link=linkEl[0].getAttribute('href');
       var pubDate=g('pubDate')||g('published')||g('updated');
       if(!title||title==='CDATA') continue;
-      // Strip CDATA wrappers if any
       title=title.replace(/^<!\[CDATA\[|\]\]>$/g,'').trim();
       desc=desc.replace(/^<!\[CDATA\[|\]\]>$/g,'').trim();
       result.push({title:title,description:desc,link:link,pubDate:pubDate,_src:src,
@@ -1109,129 +926,33 @@ function parseRSSXML(xmlStr, src){
   }catch(e){return[];}
 }
 
-// ── Cross-browser firstSuccess: runs promises in parallel, resolves with first non-empty result ──
-function firstSuccess(promises){
-  return new Promise(function(resolve,reject){
-    var remaining=promises.length;
-    if(!remaining){reject(new Error('no promises'));return;}
-    promises.forEach(function(p){
-      Promise.resolve(p).then(function(v){
-        if(v&&v.length) resolve(v); // success with data
-        else{remaining--;if(!remaining)reject(new Error('empty results'));}
-      }).catch(function(){
-        remaining--;
-        if(!remaining)reject(new Error('all failed'));
-      });
+// ══════════════════════════════════════════
+//  WORKER PROXY STRATEGY
+// ══════════════════════════════════════════
+async function fetchViaWorker(feedUrl, src, T) {
+  var proxyUrl = WORKER_URL + '/?url=' + encodeURIComponent(feedUrl);
+  return fetch(proxyUrl, {signal: mkSignal(T)})
+    .then(function(r) {
+      if (!r.ok) throw new Error('Worker HTTP ' + r.status);
+      return r.text();
+    })
+    .then(function(txt) {
+      var items = parseRSSXML(txt, src);
+      if (!items.length) throw new Error('Worker empty XML');
+      return items;
     });
-  });
 }
 
-// ══════════════════════════════════════════
-//  PROXY STRATEGY
-//  Root cause of "1/18 feeds live":
-//  Sending 18 simultaneous requests to rss2json triggers its rate limiter.
-//  Fix: rss2json is reserved ONLY for Google News feeds (8 total), sent in
-//  small batches. Direct RSS feeds use allorigins + corsproxy instead.
-// ══════════════════════════════════════════
-
-// Shared item mapper from rss2json JSON response
-function mapRss2jsonItems(items, src){
-  return items.filter(function(i){return i.title;}).map(function(i){
-    return{title:i.title||'',description:i.description||'',link:i.link||'',
-      pubDate:i.pubDate||'',_src:src,
-      _countries:tagCountries((i.title||'')+' '+(i.description||'')),
-      _brk:/breaking|urgent|alert/i.test(i.title||'')};
-  });
-}
-
-// ── Proxy 1: rss2json (best for Google News; reserved exclusively for GN feeds) ──
-function fetchViaRss2json(feedUrl, src, T){
-  return fetch(
-    'https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(feedUrl)+'&count=30',
-    {signal:mkSignal(T)}
-  ).then(function(r){
-    if(!r.ok) throw new Error('rss2json '+r.status);
-    return r.json();
-  }).then(function(j){
-    if(j.status!=='ok'||!j.items||!j.items.length) throw new Error('rss2json empty');
-    return mapRss2jsonItems(j.items, src);
-  });
-}
-
-// ── Proxy 2: allorigins (used for direct RSS feeds) ──
-function fetchViaAllorigins(feedUrl, src, T){
-  return fetch(
-    'https://api.allorigins.win/get?url='+encodeURIComponent(feedUrl),
-    {signal:mkSignal(T)}
-  ).then(function(r){
-    if(!r.ok) throw new Error('allorigins '+r.status);
-    return r.json();
-  }).then(function(j){
-    var code=j&&j.status?j.status.http_code:0;
-    if(!j||!j.contents||code!==200) throw new Error('allorigins bad');
-    var items=parseRSSXML(j.contents,src);
-    if(!items.length) throw new Error('allorigins empty');
-    return items;
-  });
-}
-
-// ── Proxy 3: corsproxy.io (used for direct RSS feeds alongside allorigins) ──
-function fetchViaCorsproxy(feedUrl, src, T){
-  return fetch(
-    'https://corsproxy.io/?'+encodeURIComponent(feedUrl),
-    {signal:mkSignal(T)}
-  ).then(function(r){
-    if(!r.ok) throw new Error('corsproxy '+r.status);
-    return r.text();
-  }).then(function(txt){
-    var items=parseRSSXML(txt,src);
-    if(!items.length) throw new Error('corsproxy empty');
-    return items;
-  });
-}
-
-// ── Proxy 4: thingproxy (fallback for direct feeds) ──
-function fetchViaThingproxy(feedUrl, src, T){
-  return fetch(
-    'https://thingproxy.freeboard.io/fetch/'+feedUrl,
-    {signal:mkSignal(T)}
-  ).then(function(r){
-    if(!r.ok) throw new Error('thingproxy '+r.status);
-    return r.text();
-  }).then(function(txt){
-    var items=parseRSSXML(txt,src);
-    if(!items.length) throw new Error('thingproxy empty');
-    return items;
-  });
-}
-
-// ── Fetch a single feed ──
-// Google News feeds → rss2json ONLY (batched in fetchNews to avoid rate limit)
-// Direct RSS feeds  → allorigins + corsproxy + thingproxy in parallel race
-async function fetchFeed(feedUrl, src, isGN){
+async function fetchFeed(feedUrl, src){
   var T=adaptiveTimeout(10000);
-  if(isGN){
-    // rss2json is best for Google News — it returns clean JSON and handles GN encoding
-    return fetchViaRss2json(feedUrl, src, T);
-  }
-  // Direct feeds: race 3 proxies — do NOT use rss2json here to protect its rate limit
-  return firstSuccess([
-    fetchViaAllorigins(feedUrl, src, T),
-    fetchViaCorsproxy(feedUrl, src, T),
-    fetchViaThingproxy(feedUrl, src, T),
-  ]);
+  return fetchViaWorker(feedUrl, src, T);
 }
 
 // ══════════════════════════════════════════
 //  FETCH NEWS
-//  Priority order:
-//  1. GDELT (always on — no proxy, no key, CORS native)
-//  2. GNews API (optional key, 100 req/day)
-//  3. RSS via proxy (best-effort bonus — proxy failures don't break the dashboard)
 // ══════════════════════════════════════════
 var _fetchFailCount=0;
 
-// Deduplicate and sort a list of article objects in place
 function dedupeAndSort(arr){
   arr.sort(function(a,b){return new Date(b.pubDate)-new Date(a.pubDate);});
   var seen={};
@@ -1243,7 +964,6 @@ function dedupeAndSort(arr){
   return out;
 }
 
-// Merge a secondary array into primary, deduping by title prefix
 function mergeInto(primary, secondary){
   var seen={};
   primary.forEach(function(x){seen[x.title.toLowerCase().slice(0,60)]=1;});
@@ -1257,7 +977,6 @@ async function fetchNews(){
   feed.innerHTML='<div class="spin-wrap"><div class="spinner"></div><div class="spin-lbl">FETCHING INTELLIGENCE DATA\u2026</div></div>';
   setConn('syncing');
 
-  // ── LAYER 1: GDELT + GNews in parallel — no proxies, always work ──
   var layer1=await Promise.allSettled([
     fetchGDELT(),
     fetchGNewsAPI().catch(function(){return[];}),
@@ -1266,50 +985,33 @@ async function fetchNews(){
   var gdeltItems  = layer1[0].status==='fulfilled'&&layer1[0].value ? layer1[0].value : [];
   var gnewsItems  = layer1[1].status==='fulfilled'&&layer1[1].value ? layer1[1].value : [];
 
-  // Merge layer 1 results immediately — GDELT guarantees we have articles
   allNews = gdeltItems.slice();
   mergeInto(allNews, gnewsItems);
   allNews = dedupeAndSort(allNews);
 
-  // If we already have enough from GDELT/GNews, render immediately
-  // then fetch RSS in background for extra breadth
   var gdeltOk = gdeltItems.length > 0;
   if(gdeltOk){
     setConn('ok');
     var gdeltStatus = gdeltItems.length+' GDELT'+(gnewsItems.length?' · '+gnewsItems.length+' GNews':'');
     document.getElementById('upd').textContent=gdeltStatus+' \xb7 '+new Date().toLocaleTimeString();
-    renderNews(); // show immediately — don't wait for slow proxies
+    renderNews(); 
   }
 
-  // ── LAYER 2: RSS feeds via proxy — best-effort, runs in background ──
-  // Google News feeds → rss2json in batches of 3 (rate-limit protection)
-  var gnFeeds=FEEDS.filter(function(f){return f.gn;});
-  var directFeeds=FEEDS.filter(function(f){return !f.gn;});
   var rssItems=[];
   var rssOk=0;
-
-  // GN feeds: batched
-  var GN_BATCH=3;
-  for(var gi=0;gi<gnFeeds.length;gi+=GN_BATCH){
-    var gnBatch=gnFeeds.slice(gi,gi+GN_BATCH);
-    var gnBatchRes=await Promise.allSettled(gnBatch.map(function(f){
-      return fetchFeed(f.url,f.name,true);
+  
+  var RSS_BATCH=4;
+  for(var gi=0;gi<FEEDS.length;gi+=RSS_BATCH){
+    var batch=FEEDS.slice(gi,gi+RSS_BATCH);
+    var batchRes=await Promise.allSettled(batch.map(function(f){
+      return fetchFeed(f.url,f.name);
     }));
-    gnBatchRes.forEach(function(r){
+    batchRes.forEach(function(r){
       if(r.status==='fulfilled'&&r.value&&r.value.length){rssOk++;rssItems=rssItems.concat(r.value);}
     });
-    if(gi+GN_BATCH<gnFeeds.length) await sleep(350);
+    if(gi+RSS_BATCH<FEEDS.length) await sleep(350);
   }
 
-  // Direct RSS feeds: parallel race via allorigins/corsproxy/thingproxy
-  var directRes=await Promise.allSettled(directFeeds.map(function(f){
-    return fetchFeed(f.url,f.name,false);
-  }));
-  directRes.forEach(function(r){
-    if(r.status==='fulfilled'&&r.value&&r.value.length){rssOk++;rssItems=rssItems.concat(r.value);}
-  });
-
-  // Merge RSS bonus items into allNews
   if(rssItems.length>0){
     mergeInto(allNews, rssItems);
     allNews=dedupeAndSort(allNews);
@@ -1317,13 +1019,11 @@ async function fetchNews(){
 
   updateApiChip();
 
-  // Final status and render
   if(allNews.length===0){
-    // This should be extremely rare now that GDELT is primary
     _fetchFailCount++;
     setConn('offline');
     var retryMs=Math.min(30000,10000*_fetchFailCount);
-    feed.innerHTML='<div class="err">\u26a0 All sources unreachable (GDELT + proxies).<br>'
+    feed.innerHTML='<div class="err">\u26a0 All sources unreachable via Worker.<br>'
       +'<span style="font-size:9px;opacity:.7">This usually means a temporary network issue. Auto-retrying in '
       +Math.round(retryMs/1000)+'s\u2026</span></div>';
     renderFallback();
@@ -1352,7 +1052,6 @@ function renderNews(){
   const feed=document.getElementById('nfeed');
   let items=allNews;
   if(activeFilter!=='all') items=items.filter(i=>i._countries.includes(activeFilter));
-  // If filter returns 0, relax to keyword search
   if(items.length===0 && activeFilter!=='all'){
     feed.innerHTML=`<div class="err">No live results for ${activeFilter} — showing all Middle East intelligence.</div>`;
     items=allNews.slice(0,25);
@@ -1383,7 +1082,6 @@ function renderNews(){
   }).join('');
 }
 
-// FALLBACK static news
 function renderFallback(){
   const feed=document.getElementById('nfeed');
   const err=feed.querySelector('.err');
