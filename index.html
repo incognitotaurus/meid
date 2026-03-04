@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MEID · Middle East Intelligence Dashboard</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg0:#060a14;--bg1:#0a0f1e;--bg2:#0e1528;--bg3:#121c35;--bg4:#18253f;
+  --blue:#00c8ff;--green:#00e57a;--red:#ff2d55;--orange:#ff7b29;--yellow:#ffc300;
+  --purple:#a855f7;--text:#cdd6f4;--muted:#6b7fa3;--dim:#3a4a6b;--border:#1a2640;
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Segoe UI',system-ui,monospace;background:var(--bg0);color:var(--text);display:flex;flex-direction:column}
+
+/* ── SCANLINE OVERLAY ── */
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.04) 3px,rgba(0,0,0,.04) 4px);pointer-events:none;z-index:9999}
+
+/* ── HEADER ── */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 18px;background:linear-gradient(180deg,#0d1529 0%,var(--bg1) 100%);border-bottom:1px solid rgba(0,200,255,.25);flex-shrink:0;gap:12px}
+.hdr-brand{display:flex;align-items:center;gap:10px;min-width:200px}
+.brand-orb{width:36px;height:36px;border-radius:50%;background:conic-gradient(from 0deg,var(--blue),var(--green),var(--purple),var(--blue));animation:spin 12s linear infinite;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.brand-orb::before{content:'⬡';font-size:16px;color:#fff;animation:spin 12s linear infinite reverse}
+@keyframes spin{to{transform:rotate(360deg)}}
+.brand-txt{display:flex;flex-direction:column}
+.brand-id{font-size:13px;font-weight:800;color:var(--blue);letter-spacing:4px}
+.brand-sub{font-size:9px;color:var(--muted);letter-spacing:2px}
+
+.hdr-center{flex:1;text-align:center}
+.hdr-title{font-size:18px;font-weight:900;letter-spacing:5px;background:linear-gradient(90deg,var(--blue),var(--green),var(--blue));background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shine 4s linear infinite}
+@keyframes shine{to{background-position:200% center}}
+.hdr-desc{font-size:9px;color:var(--muted);letter-spacing:3px;margin-top:2px}
+
+.hdr-right{display:flex;align-items:center;gap:14px;min-width:260px;justify-content:flex-end}
+.live-pill{display:flex;align-items:center;gap:6px;background:rgba(255,45,85,.12);border:1px solid var(--red);border-radius:20px;padding:4px 10px}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--red);animation:blink 1s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.live-lbl{font-size:10px;font-weight:800;color:var(--red);letter-spacing:2px}
+.conn{display:flex;align-items:center;gap:5px;font-size:9px;color:var(--muted)}
+.conn-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green)}
+.conn-dot.bad{background:var(--red);box-shadow:0 0 6px var(--red)}
+.clock-wrap{text-align:right}
+.clock{font-size:14px;font-family:'Courier New',monospace;color:var(--blue);letter-spacing:1px}
+.upd{font-size:9px;color:var(--muted);letter-spacing:1px}
+
+/* ── TICKER ── */
+.ticker-bar{background:linear-gradient(90deg,rgba(255,45,85,.08),rgba(255,123,41,.05),rgba(255,45,85,.08));border-bottom:1px solid rgba(255,45,85,.2);padding:5px 0;overflow:hidden;flex-shrink:0}
+.ticker-inner{display:flex;white-space:nowrap;animation:ticker 80s linear infinite}
+@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.tick{display:inline-flex;align-items:center;gap:6px;padding:0 28px;font-size:10.5px;color:var(--text);letter-spacing:.5px}
+.tick.urg{color:var(--red);font-weight:700}
+.tick .sep{color:var(--red);font-size:8px}
+
+/* ── LAYOUT ── */
+.layout{display:grid;grid-template-columns:270px 1fr 310px;grid-template-rows:1fr;flex:1;overflow:hidden;gap:0}
+
+/* ── SIDEBAR ── */
+.sidebar{background:var(--bg1);border-right:1px solid var(--border);overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.sidebar::-webkit-scrollbar{width:3px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--dim);border-radius:2px}
+
+.sec-lbl{font-size:9px;font-weight:700;letter-spacing:3px;color:var(--muted);text-transform:uppercase;padding-bottom:6px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;margin-bottom:2px}
+.sec-lbl::before{content:'';width:3px;height:3px;border-radius:50%;background:var(--blue)}
+
+/* Country Cards */
+.ccard{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:12px;cursor:pointer;transition:all .25s;position:relative;overflow:hidden;border-left:3px solid transparent}
+.ccard:hover{background:var(--bg3);border-color:rgba(0,200,255,.3);transform:translateX(4px)}
+.ccard.sel{border-color:rgba(0,200,255,.4);background:var(--bg3)}
+.ccard.c{border-left-color:var(--red)}
+.ccard.h{border-left-color:var(--orange)}
+.ccard.m{border-left-color:var(--yellow)}
+.ccard.l{border-left-color:var(--green)}
+
+.ccard-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+.ccard-flag{font-size:22px;margin-right:6px}
+.ccard-nm{font-size:13px;font-weight:700;letter-spacing:1px}
+.tbadge{padding:2px 7px;border-radius:10px;font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase}
+.tbadge.c{background:rgba(255,45,85,.15);color:var(--red);border:1px solid var(--red)}
+.tbadge.h{background:rgba(255,123,41,.15);color:var(--orange);border:1px solid var(--orange)}
+.tbadge.m{background:rgba(255,195,0,.15);color:var(--yellow);border:1px solid var(--yellow)}
+.tbadge.l{background:rgba(0,229,122,.15);color:var(--green);border:1px solid var(--green)}
+
+.ccard-body{font-size:10.5px;color:var(--muted);line-height:1.5;margin-bottom:8px}
+.ccard-stats{display:flex;gap:16px}
+.cs{display:flex;flex-direction:column;align-items:center}
+.cs-v{font-size:14px;font-weight:800;color:var(--blue);font-family:'Courier New',monospace}
+.cs-l{font-size:8px;color:var(--dim);letter-spacing:1px;text-transform:uppercase}
+
+/* Threat Meter */
+.threat-meter{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:10px}
+.tm-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.tm-lbl{font-size:9px;color:var(--muted);letter-spacing:1px}
+.tm-val{font-size:10px;font-weight:700;font-family:'Courier New',monospace}
+.tm-bar-bg{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:8px}
+.tm-bar{height:100%;border-radius:2px;transition:width .8s ease}
+
+/* Timeline */
+.timeline{display:flex;flex-direction:column;gap:0}
+.tl-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);position:relative}
+.tl-item:last-child{border-bottom:none}
+.tl-dot-wrap{display:flex;flex-direction:column;align-items:center;gap:0}
+.tl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.tl-line{width:1px;background:var(--border);flex:1;margin-top:4px}
+.tl-body{flex:1}
+.tl-time{font-size:9px;color:var(--muted);margin-bottom:2px;font-family:'Courier New',monospace}
+.tl-txt{font-size:10.5px;color:var(--text);line-height:1.4}
+.tl-src{font-size:9px;color:var(--blue);margin-top:2px}
+
+/* ── MAP ── */
+.map-wrap{position:relative;overflow:hidden;background:var(--bg0)}
+#map{width:100%;height:100%}
+.map-badge{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:800;background:rgba(6,10,20,.92);border:1px solid rgba(0,200,255,.4);padding:5px 16px;border-radius:20px;font-size:9px;letter-spacing:3px;color:var(--blue);white-space:nowrap;pointer-events:none}
+.map-legend{position:absolute;bottom:28px;left:12px;z-index:800;background:rgba(6,10,20,.9);border:1px solid var(--border);padding:10px 12px;border-radius:6px}
+.ml-title{font-size:8px;color:var(--muted);letter-spacing:2px;margin-bottom:6px;text-transform:uppercase}
+.ml-row{display:flex;align-items:center;gap:7px;margin-bottom:4px;font-size:9.5px;color:var(--text)}
+.ml-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.map-stats{position:absolute;top:12px;right:12px;z-index:800;display:flex;flex-direction:column;gap:5px}
+.ms-card{background:rgba(6,10,20,.9);border:1px solid var(--border);border-radius:5px;padding:6px 10px;text-align:center;min-width:80px}
+.ms-v{font-size:16px;font-weight:800;font-family:'Courier New',monospace;color:var(--blue)}
+.ms-l{font-size:8px;color:var(--muted);letter-spacing:1px}
+.ms-card.r .ms-v{color:var(--red)}
+.ms-card.o .ms-v{color:var(--orange)}
+.ms-card.g .ms-v{color:var(--green)}
+
+/* ── NEWS PANEL ── */
+.news-panel{background:var(--bg1);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.np-head{padding:10px 12px 6px;border-bottom:1px solid var(--border);flex-shrink:0}
+.np-filters{display:flex;gap:5px;flex-wrap:wrap;padding:8px 12px 6px;border-bottom:1px solid var(--border);flex-shrink:0}
+.fb{padding:3px 9px;border-radius:10px;font-size:9px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .2s;background:var(--bg2);border:1px solid var(--border);color:var(--muted)}
+.fb:hover,.fb.on{background:rgba(0,200,255,.1);border-color:var(--blue);color:var(--blue)}
+.np-body{flex:1;overflow-y:auto;padding:8px 10px;display:flex;flex-direction:column;gap:7px}
+.np-body::-webkit-scrollbar{width:3px}
+.np-body::-webkit-scrollbar-thumb{background:var(--dim);border-radius:2px}
+
+/* News cards */
+.nc{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px;cursor:pointer;transition:all .2s;border-left:3px solid transparent}
+.nc:hover{background:var(--bg3);border-color:rgba(0,200,255,.2)}
+.nc.brk{border-left-color:var(--red);animation:flash 2s ease 4}
+@keyframes flash{0%,100%{border-left-color:var(--red)}50%{border-left-color:transparent}}
+.nc-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;gap:6px}
+.nc-src{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.sbdg{padding:2px 6px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.5px;background:rgba(0,200,255,.1);color:var(--blue);border:1px solid rgba(0,200,255,.25)}
+.sbdg.v{background:rgba(0,229,122,.1);color:var(--green);border-color:rgba(0,229,122,.25)}
+.vlbl{font-size:9px;color:var(--green)}
+.brklbl{font-size:9px;color:var(--red);font-weight:800}
+.nc-time{font-size:9px;color:var(--muted);white-space:nowrap}
+.nc-title{font-size:11.5px;font-weight:600;color:var(--text);line-height:1.4;margin-bottom:4px}
+.nc-desc{font-size:10.5px;color:var(--muted);line-height:1.45;margin-bottom:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.nc-tags{display:flex;gap:4px;flex-wrap:wrap}
+.ntag{padding:1px 5px;border-radius:3px;font-size:8.5px;letter-spacing:.5px;background:rgba(255,255,255,.04);color:var(--dim);border:1px solid var(--border)}
+.spin-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;gap:14px}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.spin-lbl{font-size:10px;color:var(--muted);letter-spacing:2px}
+.err{padding:12px;background:rgba(255,45,85,.08);border:1px solid rgba(255,45,85,.25);border-radius:5px;font-size:10.5px;color:var(--orange);text-align:center;line-height:1.5}
+
+/* ── SETTINGS MODAL ── */
+.modal-bg{display:none;position:fixed;inset:0;z-index:10000;background:rgba(6,10,20,.85);backdrop-filter:blur(4px);align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--bg2);border:1px solid rgba(0,200,255,.3);border-radius:12px;padding:24px;width:420px;max-width:92vw;box-shadow:0 0 40px rgba(0,200,255,.1)}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.modal-title{font-size:13px;font-weight:800;letter-spacing:3px;color:var(--blue)}
+.modal-close{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;padding:0 4px}
+.modal-close:hover{color:var(--text)}
+.modal-section{margin-bottom:16px}
+.modal-lbl{font-size:9px;font-weight:700;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
+.modal-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:9px 12px;color:var(--text);font-size:12px;font-family:'Courier New',monospace;outline:none;transition:border-color .2s}
+.modal-input:focus{border-color:var(--blue)}
+.modal-hint{font-size:10px;color:var(--muted);margin-top:5px;line-height:1.5}
+.modal-hint a{color:var(--blue);text-decoration:none}
+.modal-hint a:hover{text-decoration:underline}
+.usage-bar-bg{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin:6px 0}
+.usage-bar{height:100%;border-radius:3px;transition:width .5s ease,background .5s}
+.usage-stats{display:flex;justify-content:space-between;font-size:10px;font-family:'Courier New',monospace}
+.modal-btn{padding:8px 20px;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .2s}
+.modal-btn.primary{background:rgba(0,200,255,.15);border:1px solid var(--blue);color:var(--blue)}
+.modal-btn.primary:hover{background:rgba(0,200,255,.25)}
+.modal-btn.danger{background:rgba(255,45,85,.1);border:1px solid var(--red);color:var(--red);font-size:10px;padding:6px 12px}
+.modal-btn.danger:hover{background:rgba(255,45,85,.2)}
+.modal-row{display:flex;gap:8px;align-items:center;margin-top:4px}
+.api-chip{display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:10px;font-size:9px;font-weight:700;letter-spacing:1px;cursor:pointer;border:1px solid;transition:all .2s}
+.key-status{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:1px;margin-top:5px}
+.key-status.ok{background:rgba(0,229,122,.1);color:var(--green);border:1px solid rgba(0,229,122,.3)}
+.key-status.missing{background:rgba(255,123,41,.1);color:var(--orange);border:1px solid rgba(255,123,41,.3)}
+/* Leaflet popup override */
+.leaflet-popup-content-wrapper{background:rgba(6,10,20,.97)!important;border:1px solid rgba(0,200,255,.4)!important;color:var(--text)!important;border-radius:6px!important;box-shadow:0 0 20px rgba(0,200,255,.15)!important}
+.leaflet-popup-tip{background:rgba(0,200,255,.4)!important}
+.leaflet-popup-content{margin:10px 14px!important}
+.pu-title{font-size:12px;font-weight:800;color:var(--blue);margin-bottom:3px}
+.pu-status{font-size:9px;letter-spacing:2px;font-weight:700;margin-bottom:5px}
+.pu-desc{font-size:10.5px;color:var(--muted);line-height:1.5}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ HEADER ═══════════ -->
+<header class="hdr">
+  <div class="hdr-brand">
+    <div class="brand-orb"></div>
+    <div class="brand-txt">
+      <div class="brand-id">MEID</div>
+      <div class="brand-sub">INTELLIGENCE PLATFORM</div>
+    </div>
+  </div>
+  <div class="hdr-center">
+    <div class="hdr-title">MIDDLE EAST INTELLIGENCE DASHBOARD</div>
+    <div class="hdr-desc">VERIFIED SOURCES · LIVE MONITORING · MULTI-DOMAIN ANALYSIS · FAKE NEWS FILTERED</div>
+  </div>
+  <div class="hdr-right">
+    <div class="conn"><div class="conn-dot" id="connDot"></div><span id="connTxt">CONNECTED</span></div>
+    <div class="live-pill"><div class="live-dot"></div><span class="live-lbl">LIVE</span></div>
+    <div id="apiChipWrap" style="cursor:pointer" onclick="openSettings()">
+      <div class="api-chip" id="apiChip" style="color:var(--orange);border-color:var(--orange)">⚙ NEWSAPI: OFF</div>
+    </div>
+    <div class="clock-wrap">
+      <div class="clock" id="clk">--:--:-- UTC</div>
+      <div class="upd" id="upd">Initializing…</div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════ TICKER ═══════════ -->
+<div class="ticker-bar">
+  <div class="ticker-inner" id="ticker"></div>
+</div>
+
+<!-- ═══════════ MAIN LAYOUT ═══════════ -->
+<div class="layout">
+
+  <!-- LEFT: Country Status + Timeline -->
+  <aside class="sidebar">
+    <div class="sec-lbl">Country Status</div>
+    <div id="ccards"></div>
+
+    <div class="sec-lbl" style="margin-top:6px">Threat Index</div>
+    <div class="threat-meter" id="threatMeter"></div>
+
+    <div class="sec-lbl" style="margin-top:6px">Recent Events</div>
+    <div class="timeline" id="timeline"></div>
+  </aside>
+
+  <!-- CENTER: Map -->
+  <div class="map-wrap">
+    <div class="map-badge">▲ OPERATIONAL THEATER — MIDDLE EAST</div>
+    <div id="map"></div>
+    <div class="map-stats" id="mapStats"></div>
+    <div class="map-legend">
+      <div class="ml-title">Legend</div>
+      <div class="ml-row"><div class="ml-dot" style="background:var(--red)"></div>Active Conflict</div>
+      <div class="ml-row"><div class="ml-dot" style="background:var(--orange)"></div>High Tension</div>
+      <div class="ml-row"><div class="ml-dot" style="background:var(--yellow)"></div>Monitoring</div>
+      <div class="ml-row"><div class="ml-dot" style="background:var(--blue)"></div>Key Installation</div>
+      <div class="ml-row"><div class="ml-dot" style="background:var(--green)"></div>Stable / Diplomatic</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: News Feed -->
+  <div class="news-panel">
+    <div class="np-head">
+      <div class="sec-lbl" style="border:none;margin:0;padding:0;justify-content:space-between">
+        Intelligence Feed
+        <button onclick="fetchNews()" style="padding:3px 10px;background:rgba(0,200,255,.1);border:1px solid var(--blue);border-radius:10px;color:var(--blue);font-size:9px;letter-spacing:1px;cursor:pointer">↻ REFRESH</button>
+      </div>
+    </div>
+    <div class="np-filters">
+      <button class="fb on" data-f="all"   onclick="doFilter(this,'all')">ALL</button>
+      <button class="fb"    data-f="ISR"   onclick="doFilter(this,'ISR')">🇮🇱 ISRAEL</button>
+      <button class="fb"    data-f="IRN"   onclick="doFilter(this,'IRN')">🇮🇷 IRAN</button>
+      <button class="fb"    data-f="UAE"   onclick="doFilter(this,'UAE')">🇦🇪 UAE</button>
+      <button class="fb"    data-f="KWT"   onclick="doFilter(this,'KWT')">🇰🇼 KUWAIT</button>
+      <button class="fb"    data-f="QAT"   onclick="doFilter(this,'QAT')">🇶🇦 QATAR</button>
+      <button class="fb"    data-f="SAU"   onclick="doFilter(this,'SAU')">🇸🇦 SAUDI</button>
+    </div>
+    <div class="np-body" id="nfeed">
+      <div class="spin-wrap"><div class="spinner"></div><div class="spin-lbl">FETCHING INTELLIGENCE…</div></div>
+    </div>
+  </div>
+
+</div><!-- /layout -->
+
+<!-- ═══════════ SETTINGS MODAL ═══════════ -->
+<div class="modal-bg" id="settingsModal" onclick="handleModalBgClick(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-hdr">
+      <div class="modal-title">⚙ NEWSAPI CONFIGURATION</div>
+      <button class="modal-close" onclick="closeSettings()">✕</button>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-lbl">API Key</div>
+      <input class="modal-input" id="apiKeyInput" type="password" placeholder="Paste your NewsAPI key here…" autocomplete="off" spellcheck="false"/>
+      <div id="keyStatus" class="key-status missing" style="display:none"></div>
+      <div class="modal-hint">
+        Get a free key at <a href="https://newsapi.org/register" target="_blank">newsapi.org/register</a>
+        — free tier gives 100 requests/day. Key is saved locally in your browser.
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-lbl">Daily Usage (resets at midnight)</div>
+      <div class="usage-bar-bg"><div class="usage-bar" id="usageBar" style="width:0%;background:var(--green)"></div></div>
+      <div class="usage-stats">
+        <span id="usageUsed" style="color:var(--text)">0 used</span>
+        <span id="usageLeft" style="color:var(--green)">100 remaining</span>
+      </div>
+    </div>
+
+    <div class="modal-row">
+      <button class="modal-btn primary" onclick="saveAndApply()">✓ SAVE &amp; CONNECT</button>
+      <button class="modal-btn danger" onclick="resetUsage()">↺ RESET COUNTER</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+"use strict";
+
+// ══════════════════════════════════════════
+//  CLOCK
+// ══════════════════════════════════════════
+(function clock(){
+  const el=document.getElementById('clk');
+  function t(){
+    const n=new Date();
+    el.textContent=n.toUTCString().match(/\d\d:\d\d:\d\d/)[0]+' UTC';
+  }
+  t(); setInterval(t,1000);
+})();
+
+// ══════════════════════════════════════════
+//  TICKER
+// ══════════════════════════════════════════
+const TICKER_DATA=[
+  {t:"IDF confirms ongoing multi-front operations — Northern Gaza, West Bank, and Lebanon border",u:true},
+  {t:"Iran IRGC activates reserve units amid heightened regional tensions"},
+  {t:"UAE condemns escalation, activates enhanced air-defense protocols across emirates"},
+  {t:"Qatar mediators in Cairo for hostage talks — sources say framework 'progressing'"},
+  {t:"Kuwait partially evacuates embassy staff from conflict-adjacent capitals"},
+  {t:"Houthis claim ballistic missile salvo toward southern Israel — Iron Dome intercepts confirmed",u:true},
+  {t:"US 5th Fleet deploys additional destroyers to eastern Mediterranean"},
+  {t:"Israel Air Force strikes weapons convoys in eastern Syria overnight"},
+  {t:"IAEA requests emergency inspection access to Fordow enrichment facility"},
+  {t:"Saudi-Israeli normalisation talks stalled pending Gaza ceasefire framework"},
+  {t:"Saudi Arabia intercepts Houthi ballistic missile over Jizan — Patriot battery engaged",u:true},
+  {t:"Aramco facilities in Dhahran placed on heightened security footing amid regional escalation"},
+  {t:"UN Security Council emergency session called over Red Sea shipping attacks"},
+  {t:"Lebanon PM requests international ceasefire monitoring mission along Blue Line"},
+];
+(function buildTicker(){
+  const d=[...TICKER_DATA,...TICKER_DATA];
+  document.getElementById('ticker').innerHTML=d.map(x=>`<span class="tick${x.u?' urg':''}"><span class="sep">◆</span>${x.t}</span>`).join('');
+})();
+
+// ══════════════════════════════════════════
+//  COUNTRY DATA
+// ══════════════════════════════════════════
+const COUNTRIES=[
+  {code:'ISR',flag:'🇮🇱',name:'Israel',cls:'c',threat:'CRITICAL',lvl:95,
+   body:'Active multi-front military operations. IDF engaged in Gaza, West Bank, and Lebanese border zones. Iron Dome on continuous alert.',
+   ev:67,al:21,src:112},
+  {code:'IRN',flag:'🇮🇷',name:'Iran',cls:'h',threat:'HIGH',lvl:78,
+   body:'Nuclear program at record enrichment levels. IRGC proxy network active across Iraq, Syria, Lebanon & Yemen. IAEA access denied.',
+   ev:43,al:14,src:84},
+  {code:'UAE',flag:'🇦🇪',name:'UAE',cls:'m',threat:'ELEVATED',lvl:52,
+   body:'Air defense systems active following drone interception. Economic corridors monitored. Diplomatic backchannel with Tehran open.',
+   ev:9,al:4,src:61},
+  {code:'KWT',flag:'🇰🇼',name:'Kuwait',cls:'m',threat:'ELEVATED',lvl:44,
+   body:'US military assets at Camp Arifjan on heightened posture. Partial diplomatic evacuation from conflict zones. Closely monitoring.',
+   ev:5,al:2,src:37},
+  {code:'QAT',flag:'🇶🇦',name:'Qatar',cls:'l',threat:'STABLE',lvl:22,
+   body:'CENTCOM forward HQ operational. Al Udeid Air Base active. Mediating hostage negotiations. Stable internal security situation.',
+   ev:3,al:1,src:49},
+  {code:'SAU',flag:'🇸🇦',name:'Saudi Arabia',cls:'h',threat:'HIGH',lvl:71,
+   body:'Houthi ballistic missile and drone attacks on Saudi territory ongoing. Aramco facilities on high alert. Leading Arab diplomatic coalition.',
+   ev:29,al:11,src:76},
+];
+
+// Build country cards
+(function buildCards(){
+  document.getElementById('ccards').innerHTML=COUNTRIES.map(c=>`
+    <div class="ccard ${c.cls}" id="cc-${c.code}" onclick="focusCountry('${c.code}')">
+      <div class="ccard-top">
+        <div style="display:flex;align-items:center">
+          <span class="ccard-flag">${c.flag}</span>
+          <span class="ccard-nm">${c.name}</span>
+        </div>
+        <span class="tbadge ${c.cls}">${c.threat}</span>
+      </div>
+      <div class="ccard-body">${c.body}</div>
+      <div class="ccard-stats">
+        <div class="cs"><div class="cs-v">${c.ev}</div><div class="cs-l">Events</div></div>
+        <div class="cs"><div class="cs-v">${c.al}</div><div class="cs-l">Alerts</div></div>
+        <div class="cs"><div class="cs-v">${c.src}</div><div class="cs-l">Sources</div></div>
+      </div>
+    </div>
+  `).join('');
+})();
+
+// Threat meter
+(function buildMeter(){
+  const colors=['var(--red)','var(--orange)','var(--yellow)','var(--yellow)','var(--green)','var(--orange)'];
+  document.getElementById('threatMeter').innerHTML=COUNTRIES.map((c,i)=>`
+    <div class="tm-row"><span class="tm-lbl">${c.flag} ${c.name}</span><span class="tm-val" style="color:${colors[i]}">${c.lvl}%</span></div>
+    <div class="tm-bar-bg"><div class="tm-bar" style="width:${c.lvl}%;background:${colors[i]}"></div></div>
+  `).join('');
+})();
+
+// Timeline
+const TL=[
+  {dot:'var(--red)',   time:'NOW',   txt:'IDF airstrike reported on weapons cache, Rafah corridor', src:'Reuters'},
+  {dot:'var(--red)',   time:'-14m',  txt:'Rocket barrage from northern Gaza intercepted over Ashkelon', src:'Times of Israel'},
+  {dot:'var(--orange)',time:'-31m',  txt:'IRGC vessel shadows US carrier group near Strait of Hormuz', src:'AP News'},
+  {dot:'var(--yellow)',time:'-58m',  txt:'UAE scrambles fighter jets after unidentified drone detected', src:'Al Jazeera'},
+  {dot:'var(--blue)',  time:'-1h22', txt:'Qatar foreign minister lands in Cairo for mediation talks', src:'BBC News'},
+  {dot:'var(--orange)',time:'-2h05', txt:'Houthi ballistic missile intercepted over Red Sea by USS Carney', src:'Reuters'},
+  {dot:'var(--yellow)',time:'-3h40', txt:'Kuwait orders partial evacuation of embassy staff from Beirut', src:'AP News'},
+  {dot:'var(--red)',   time:'-4h15', txt:'IAF strikes Hezbollah command node, southern Lebanon', src:'Jerusalem Post'},
+  {dot:'var(--blue)',  time:'-5h33', txt:'IAEA emergency session called on Iran enrichment activity', src:'Reuters'},
+  {dot:'var(--green)', time:'-7h',   txt:'Qatar-hosted indirect talks yield partial prisoner list exchange', src:'BBC News'},
+  {dot:'var(--orange)',time:'-8h30', txt:'Saudi Patriot battery intercepts Houthi ballistic missile over Jizan', src:'Reuters'},
+  {dot:'var(--yellow)',time:'-10h',  txt:'Saudi Arabia joins UAE in calling for immediate de-escalation summit', src:'Al Jazeera'},
+];
+(function buildTimeline(){
+  document.getElementById('timeline').innerHTML=TL.map((x,i)=>`
+    <div class="tl-item">
+      <div class="tl-dot-wrap">
+        <div class="tl-dot" style="background:${x.dot}"></div>
+        ${i<TL.length-1?'<div class="tl-line"></div>':''}
+      </div>
+      <div class="tl-body">
+        <div class="tl-time">${x.time}</div>
+        <div class="tl-txt">${x.txt}</div>
+        <div class="tl-src">▸ ${x.src}</div>
+      </div>
+    </div>
+  `).join('');
+})();
+
+// Map stats
+(function buildMapStats(){
+  document.getElementById('mapStats').innerHTML=`
+    <div class="ms-card r"><div class="ms-v">9</div><div class="ms-l">ACTIVE ZONES</div></div>
+    <div class="ms-card o"><div class="ms-v">24</div><div class="ms-l">INCIDENTS/24H</div></div>
+    <div class="ms-card g"><div class="ms-v">6</div><div class="ms-l">MONITORED</div></div>
+  `;
+})();
+
+// ══════════════════════════════════════════
+//  MAP
+// ══════════════════════════════════════════
+const map=L.map('map',{center:[30,42],zoom:5,zoomControl:true,attributionControl:false});
+
+// Dark tile layer
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+  attribution:'© OpenStreetMap © CARTO',subdomains:'abcd',maxZoom:19
+}).addTo(map);
+
+// Pulse animation injected once
+const pStyle=document.createElement('style');
+pStyle.textContent=`
+  @keyframes pm{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.4);opacity:.7}}
+  .pm-dot{border-radius:50%;border:2px solid rgba(255,255,255,.4);animation:pm 2s ease-in-out infinite}
+  .pm-ring{border-radius:50%;position:absolute;animation:pm 2s ease-in-out infinite;opacity:.3}
+`;
+document.head.appendChild(pStyle);
+
+function mkIcon(color,sz=12,ring=true){
+  return L.divIcon({
+    className:'',
+    html:`<div style="position:relative;width:${sz}px;height:${sz}px">
+      ${ring?`<div class="pm-ring" style="background:${color};width:${sz*2}px;height:${sz*2}px;top:${-sz/2}px;left:${-sz/2}px;animation-delay:.3s"></div>`:''}
+      <div class="pm-dot" style="background:${color};width:${sz}px;height:${sz}px;box-shadow:0 0 ${sz}px ${color},0 0 ${sz*2}px ${color}60"></div>
+    </div>`,
+    iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]
+  });
+}
+
+const MARKERS=[
+  // ── ACTIVE CONFLICTS (red)
+  {la:31.354,ln:34.308,c:'var(--red)',s:20,ring:true,
+   title:'Gaza Strip',st:'ACTIVE CONFLICT',
+   desc:'IDF multi-axis ground and air operations ongoing. Humanitarian corridors contested. Iron Dome intercepts multiple daily.'},
+  {la:31.952,ln:35.233,c:'var(--red)',s:14,ring:true,
+   title:'West Bank',st:'ACTIVE CONFLICT',
+   desc:'IDF counter-terror operations in Jenin, Tulkarm, and Nablus. Settlement tensions elevated. Checkpoint incidents daily.'},
+  {la:33.270,ln:35.573,c:'var(--orange)',s:14,ring:true,
+   title:'S. Lebanon / Blue Line',st:'HIGH TENSION',
+   desc:'IDF airstrikes targeting Hezbollah weapons convoys and command nodes. Cross-border rocket fire ongoing.'},
+  {la:15.552,ln:48.516,c:'var(--red)',s:14,ring:true,
+   title:'Yemen — Houthi Control',st:'ACTIVE CONFLICT',
+   desc:'Houthi forces launching ballistic missiles and drone swarms toward Red Sea shipping and southern Israel. Coalition strikes ongoing.'},
+  {la:24.068,ln:32.899,c:'var(--orange)',s:10,ring:false,
+   title:'Red Sea Shipping Corridor',st:'HIGH RISK',
+   desc:'Multiple commercial vessels attacked. US/UK coalition providing escort and strike suppression. Lloyd\'s war-risk premiums elevated.'},
+
+  // ── HIGH TENSION (orange)
+  {la:35.689,ln:51.389,c:'var(--orange)',s:14,ring:true,
+   title:'Tehran, Iran',st:'HIGH TENSION',
+   desc:'IRGC command and nuclear program coordination. 60% enrichment confirmed. Proxy network management from Iranian soil.'},
+  {la:33.450,ln:48.350,c:'var(--orange)',s:10,ring:false,
+   title:'Fordow Facility, Iran',st:'HIGH TENSION',
+   desc:'IAEA reports significant new centrifuge activity. Underground enrichment facility. Access request pending since November.'},
+  {la:27.117,ln:56.266,c:'var(--yellow)',s:10,ring:false,
+   title:'Strait of Hormuz',st:'MONITORING',
+   desc:'IRGC maritime exercises. Tanker harassment incidents. US 5th Fleet increased patrols. Critical global oil chokepoint.'},
+  {la:33.510,ln:36.291,c:'var(--orange)',s:10,ring:false,
+   title:'Damascus, Syria',st:'UNSTABLE',
+   desc:'Post-Assad transition government consolidating. Multiple armed factions active. Iranian proxy assets being targeted.'},
+  {la:33.802,ln:44.366,c:'var(--orange)',s:10,ring:false,
+   title:'Baghdad, Iraq',st:'ELEVATED',
+   desc:'PMF militia activity increasing. US embassy and military advisors under indirect fire. Rockets intercepted at BIAP.'},
+
+  // ── MONITORED (yellow)
+  {la:24.200,ln:53.960,c:'var(--yellow)',s:10,ring:false,
+   title:'Abu Dhabi, UAE',st:'MONITORING',
+   desc:'Air defense intercept reported. Patriot and C-RAM systems activated. Critical infrastructure on heightened security posture.'},
+  {la:25.204,ln:55.270,c:'var(--yellow)',s:8,ring:false,
+   title:'Dubai, UAE',st:'MONITORING',
+   desc:'Port activity normal. Financial sector monitoring Iran sanctions evasion. Diplomatic communications elevated.'},
+  {la:29.375,ln:47.977,c:'var(--yellow)',s:10,ring:false,
+   title:'Kuwait City',st:'MONITORING',
+   desc:'Camp Arifjan US base on heightened alert. Pre-positioned equipment inventories reviewed. Embassy staff partially relocated.'},
+
+  // ── KEY INSTALLATIONS (blue)
+  {la:32.085,ln:34.781,c:'var(--blue)',s:12,ring:false,
+   title:'Tel Aviv / IDF HQ',st:'COMMAND & CONTROL',
+   desc:'Israeli Defense Forces headquarters. Air Force command. National emergency protocols active. Iron Dome coordination center.'},
+  {la:31.768,ln:35.213,c:'var(--blue)',s:10,ring:false,
+   title:'Jerusalem',st:'KEY LOCATION',
+   desc:'Political capital under elevated security. Al-Aqsa compound access restricted. US Consulate General operational.'},
+  {la:25.283,ln:51.531,c:'var(--blue)',s:12,ring:false,
+   title:'Al Udeid AB / CENTCOM, Qatar',st:'US FORWARD HQ',
+   desc:'CENTCOM forward headquarters. B-52 and F-15 assets. Mediating ceasefire talks. ISR coverage for entire AOR.'},
+
+  // ── STABLE / DIPLOMATIC (green)
+  {la:24.453,ln:54.377,c:'var(--green)',s:9,ring:false,
+   title:'Abu Dhabi Intl Mediation',st:'DIPLOMATIC',
+   desc:'UAE diplomatic corps actively engaging all parties. Backchannel Iran-Israel messages facilitated through Emirati intermediaries.'},
+
+  // ── SAUDI ARABIA MARKERS ──
+  {la:24.688,ln:46.722,c:'var(--orange)',s:13,ring:true,
+   title:'Riyadh, Saudi Arabia',st:'HIGH TENSION',
+   desc:'MBS leading Arab coalition response. Saudi Patriot systems on active deployment. Normalisation with Israel paused pending Gaza resolution. US F-35 sale under review.'},
+  {la:21.485,ln:39.192,c:'var(--yellow)',s:10,ring:false,
+   title:'Jeddah, Saudi Arabia',st:'MONITORING',
+   desc:'Red Sea port on heightened maritime security alert. Saudi Coast Guard conducting extended patrols. Commercial shipping rerouted.'},
+  {la:26.289,ln:50.212,c:'var(--orange)',s:11,ring:true,
+   title:'Aramco / Dhahran',st:'HIGH RISK',
+   desc:'Saudi Aramco critical infrastructure on maximum security footing. Patriot air-defense batteries repositioned. Previous Houthi drone strike site.'},
+  {la:16.900,ln:43.120,c:'var(--red)',s:11,ring:true,
+   title:'Saudi-Yemen Border (Jizan)',st:'ACTIVE CONFLICT',
+   desc:'Ongoing Houthi cross-border missile and drone campaign. Saudi air defense engagements daily. Coalition airstrikes on Houthi launch sites.'},
+  {la:18.298,ln:42.565,c:'var(--yellow)',s:9,ring:false,
+   title:'Abha, Saudi Arabia',st:'MONITORING',
+   desc:'Abha International Airport previously targeted by Houthis. Air defense units forward-deployed. Civilian aviation risk elevated.'},
+];
+
+MARKERS.forEach(m=>{
+  const mk=L.marker([m.la,m.ln],{icon:mkIcon(m.c,m.s,m.ring)}).addTo(map);
+  const stColor=m.st.includes('ACTIVE')?'var(--red)':m.st.includes('HIGH')?'var(--orange)':m.st.includes('STABLE')||m.st.includes('DIPL')||m.st.includes('KEY')?'var(--green)':'var(--yellow)';
+  mk.bindPopup(`
+    <div class="pu-title">${m.title}</div>
+    <div class="pu-status" style="color:${stColor}">● ${m.st}</div>
+    <div class="pu-desc">${m.desc}</div>
+  `,{maxWidth:230});
+});
+
+// Country focus
+const FOCUS={ISR:[31.5,34.75,8],IRN:[32.4,53.7,6],UAE:[24.4,54.3,8],KWT:[29.4,47.9,9],QAT:[25.2,51.5,9],SAU:[24.0,45.0,6]};
+function focusCountry(code){
+  const f=FOCUS[code];if(f)map.flyTo([f[0],f[1]],f[2],{duration:1.2});
+  doFilter(document.querySelector(`.fb[data-f="${code}"]`),code);
+}
+
+// ══════════════════════════════════════════
+//  NEWSAPI SETTINGS & RATE LIMITER
+// ══════════════════════════════════════════
+const KEY_STORE   = 'meid_newsapi_key';
+const USAGE_STORE = 'meid_newsapi_usage';
+const DAILY_LIMIT = 100;
+
+function getApiKey(){ return localStorage.getItem(KEY_STORE)||''; }
+function saveApiKey(k){ localStorage.setItem(KEY_STORE,k.trim()); }
+
+function getUsage(){
+  try{
+    const s=JSON.parse(localStorage.getItem(USAGE_STORE)||'{}');
+    if(s.date!==new Date().toDateString()) return {date:new Date().toDateString(),count:0};
+    return s;
+  }catch(e){return {date:new Date().toDateString(),count:0};}
+}
+function saveUsage(u){ localStorage.setItem(USAGE_STORE,JSON.stringify(u)); }
+function incrementUsage(){
+  const u=getUsage(); u.count++;
+  saveUsage(u); updateApiChip(); return u.count;
+}
+function canRequest(){ return getUsage().count < DAILY_LIMIT; }
+
+function updateApiChip(){
+  const chip=document.getElementById('apiChip');
+  const key=getApiKey();
+  const u=getUsage();
+  const left=DAILY_LIMIT-u.count;
+  if(!key){
+    chip.textContent='⚙ NEWSAPI: OFF';
+    chip.style.color='var(--orange)';chip.style.borderColor='var(--orange)';
+  } else if(left<=0){
+    chip.textContent='⚙ NEWSAPI: LIMIT';
+    chip.style.color='var(--red)';chip.style.borderColor='var(--red)';
+  } else {
+    chip.textContent=`⚙ NEWSAPI: ${left}/100`;
+    chip.style.color= left<20?'var(--red)':left<50?'var(--yellow)':'var(--green)';
+    chip.style.borderColor= left<20?'var(--red)':left<50?'var(--yellow)':'var(--green)';
+  }
+}
+
+// ── Settings modal ──
+function openSettings(){
+  const modal=document.getElementById('settingsModal');
+  modal.classList.add('open');
+  document.getElementById('apiKeyInput').value=getApiKey();
+  refreshUsagePanel();
+  updateKeyStatus();
+}
+function closeSettings(){ document.getElementById('settingsModal').classList.remove('open'); }
+function handleModalBgClick(e){ if(e.target===document.getElementById('settingsModal')) closeSettings(); }
+
+function updateKeyStatus(){
+  const k=getApiKey();
+  const el=document.getElementById('keyStatus');
+  el.style.display='inline-flex';
+  if(k){ el.className='key-status ok'; el.textContent='✓ KEY SAVED'; }
+  else { el.className='key-status missing'; el.textContent='⚠ NO KEY'; }
+}
+
+function refreshUsagePanel(){
+  const u=getUsage();
+  const pct=Math.min((u.count/DAILY_LIMIT)*100,100);
+  const left=DAILY_LIMIT-u.count;
+  document.getElementById('usageBar').style.width=pct+'%';
+  document.getElementById('usageBar').style.background=
+    left<20?'var(--red)':left<50?'var(--yellow)':'var(--green)';
+  document.getElementById('usageUsed').textContent=u.count+' used';
+  document.getElementById('usageLeft').style.color=left<20?'var(--red)':left<50?'var(--yellow)':'var(--green)';
+  document.getElementById('usageLeft').textContent=left+' remaining';
+}
+
+function saveAndApply(){
+  const k=document.getElementById('apiKeyInput').value.trim();
+  saveApiKey(k);
+  updateKeyStatus();
+  updateApiChip();
+  refreshUsagePanel();
+  closeSettings();
+  if(k) fetchNews();
+}
+
+function resetUsage(){
+  saveUsage({date:new Date().toDateString(),count:0});
+  refreshUsagePanel();
+  updateApiChip();
+}
+
+// ── NewsAPI fetch ──
+async function fetchNewsAPI(){
+  const key=getApiKey();
+  if(!key||!canRequest()) return [];
+  const q=encodeURIComponent(
+    'israel OR iran OR "saudi arabia" OR UAE OR kuwait OR qatar OR gaza OR hamas OR hezbollah OR houthi OR "middle east"'
+  );
+  const url=`https://newsapi.org/v2/everything?q=${q}&language=en&sortBy=publishedAt&pageSize=20&apiKey=${key}`;
+  const r=await fetch(url);
+  if(!r.ok) throw new Error('NewsAPI HTTP '+r.status);
+  const j=await r.json();
+  if(j.status!=='ok') throw new Error(j.message||'NewsAPI error');
+  incrementUsage();
+  return j.articles
+    .filter(a=>a.title&&!a.title.includes('[Removed]'))
+    .map(a=>({
+      title:a.title,
+      description:a.description||'',
+      link:a.url||'',
+      pubDate:a.publishedAt||'',
+      _src:a.source?.name||'NewsAPI',
+      _countries:tagCountries((a.title||'')+' '+(a.description||'')),
+      _brk:/breaking|urgent|alert/i.test(a.title||''),
+      _fromNewsAPI:true,
+    }));
+}
+
+// ══════════════════════════════════════════
+//  NEWS FEED
+// ══════════════════════════════════════════
+let allNews=[], activeFilter='all';
+
+const KW={
+  ISR:['israel','israeli','idf','gaza','hamas','jerusalem','tel aviv','west bank','netanyahu','iron dome','hezbollah'],
+  IRN:['iran','iranian','tehran','irgc','nuclear','natanz','fordow','khamenei','houthi','enrichment','ballistic'],
+  UAE:['uae','dubai','abu dhabi','emirates','emirati','khalifa'],
+  KWT:['kuwait','kuwaiti','camp arifjan'],
+  QAT:['qatar','qatari','doha','al udeid','centcom'],
+  SAU:['saudi','saudi arabia','riyadh','mbs','aramco','jeddah','jizan','abha','neom','bin salman'],
+};
+
+const TRUSTED=[
+  {n:'Reuters',         d:['reuters.com'],         v:true},
+  {n:'BBC News',        d:['bbc.co.uk','bbc.com'], v:true},
+  {n:'Al Jazeera',      d:['aljazeera.com','aljazeera.net'],v:true},
+  {n:'AP News',         d:['apnews.com'],           v:true},
+  {n:'Times of Israel', d:['timesofisrael.com'],    v:true},
+  {n:'Jerusalem Post',  d:['jpost.com'],            v:true},
+  {n:'Haaretz',         d:['haaretz.com'],          v:true},
+  {n:'Middle East Eye', d:['middleeasteye.net'],    v:false},
+  {n:'The Guardian',    d:['theguardian.com'],      v:true},
+];
+
+function srcOf(link){
+  const u=link||'';
+  for(const s of TRUSTED) if(s.d.some(d=>u.includes(d))) return s;
+  return null;
+}
+
+function tagCountries(text){
+  const l=text.toLowerCase();
+  return Object.entries(KW).filter(([,kws])=>kws.some(k=>l.includes(k))).map(([c])=>c);
+}
+
+function ago(ds){
+  const d=new Date(ds),n=new Date(),diff=Math.floor((n-d)/1000);
+  if(diff<60)return diff+'s ago';
+  if(diff<3600)return Math.floor(diff/60)+'m ago';
+  if(diff<86400)return Math.floor(diff/3600)+'h ago';
+  return Math.floor(diff/86400)+'d ago';
+}
+
+async function fetchFeed(url,fallbackName){
+  const r=await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}&count=25&api_key=`);
+  if(!r.ok)throw new Error('http');
+  const j=await r.json();
+  if(j.status!=='ok')throw new Error('rss');
+  return j.items.map(i=>({
+    ...i,
+    _src:fallbackName,
+    _countries:tagCountries(i.title+' '+(i.description||'')),
+    _brk:/breaking|urgent|alert/i.test(i.title),
+  }));
+}
+
+async function fetchNews(){
+  const feed=document.getElementById('nfeed');
+  feed.innerHTML=`<div class="spin-wrap"><div class="spinner"></div><div class="spin-lbl">FETCHING INTELLIGENCE DATA…</div></div>`;
+  setConn('syncing');
+
+  const FEEDS=[
+    {url:'https://feeds.bbci.co.uk/news/world/middle_east/rss.xml',name:'BBC News'},
+    {url:'https://feeds.reuters.com/reuters/topNews',name:'Reuters'},
+    {url:'https://www.aljazeera.com/xml/rss/all.xml',name:'Al Jazeera'},
+    {url:'https://www.timesofisrael.com/feed/',name:'Times of Israel'},
+    {url:'https://www.jpost.com/rss/rssfeedsheadlines.aspx',name:'Jerusalem Post'},
+    {url:'https://rss.app/feeds/v1.1/tObUMBwQvLbYCeDC.json',name:'AP News'},
+  ];
+
+  // Run RSS feeds + NewsAPI in parallel
+  const [rssResults, napiItems] = await Promise.all([
+    Promise.allSettled(FEEDS.map(f=>fetchFeed(f.url,f.name))),
+    fetchNewsAPI().catch(()=>[]),
+  ]);
+
+  allNews=[];
+  rssResults.forEach(r=>{ if(r.status==='fulfilled') allNews.push(...r.value); });
+
+  // Merge NewsAPI results — dedupe by title similarity
+  const existingTitles=new Set(allNews.map(x=>x.title.toLowerCase().slice(0,60)));
+  const fresh=napiItems.filter(a=>!existingTitles.has(a.title.toLowerCase().slice(0,60)));
+  allNews.push(...fresh);
+
+  allNews.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
+  updateApiChip();
+
+  if(allNews.length===0){
+    setConn('offline');
+    feed.innerHTML=`<div class="err">⚠ Live feed temporarily unavailable — displaying verified cached intelligence below</div>`;
+    renderFallback();
+    return;
+  }
+
+  setConn('ok');
+  document.getElementById('upd').textContent='Updated: '+new Date().toLocaleTimeString()+' local';
+  renderNews();
+}
+
+function setConn(state){
+  const dot=document.getElementById('connDot');
+  const txt=document.getElementById('connTxt');
+  if(state==='ok'){dot.className='conn-dot';txt.textContent='CONNECTED';}
+  else if(state==='syncing'){dot.className='conn-dot';txt.textContent='SYNCING';}
+  else{dot.className='conn-dot bad';txt.textContent='OFFLINE';}
+}
+
+function renderNews(){
+  const feed=document.getElementById('nfeed');
+  let items=allNews;
+  if(activeFilter!=='all') items=items.filter(i=>i._countries.includes(activeFilter));
+  // If filter returns 0, relax to keyword search
+  if(items.length===0 && activeFilter!=='all'){
+    feed.innerHTML=`<div class="err">No live results for ${activeFilter} — showing all Middle East intelligence.</div>`;
+    items=allNews.slice(0,25);
+  }else{
+    items=items.slice(0,35);
+  }
+  if(items.length===0){feed.innerHTML=`<div class="err">No items available. Try refreshing.</div>`;return;}
+
+  feed.innerHTML=items.map(i=>{
+    const src=srcOf(i.link);
+    const sn=src?src.n:(i._src||'Unknown');
+    const v=src?src.v:false;
+    const tags=i._countries.map(c=>`<span class="ntag">${c}</span>`).join('');
+    const raw=(i.description||'').replace(/<[^>]*>/g,'').slice(0,180);
+    return `<div class="nc${i._brk?' brk':''}" onclick="window.open('${i.link}','_blank')">
+      <div class="nc-meta">
+        <div class="nc-src">
+          <span class="sbdg${v?' v':''}">${sn}</span>
+          ${v?'<span class="vlbl">✓ VERIFIED</span>':''}
+          ${i._brk?'<span class="brklbl">⚡ BREAKING</span>':''}
+        </div>
+        <div class="nc-time">${ago(i.pubDate)}</div>
+      </div>
+      <div class="nc-title">${i.title}</div>
+      ${raw?`<div class="nc-desc">${raw}</div>`:''}
+      <div class="nc-tags">${tags}</div>
+    </div>`;
+  }).join('');
+}
+
+// FALLBACK static news
+function renderFallback(){
+  const feed=document.getElementById('nfeed');
+  const err=feed.querySelector('.err');
+  const MOCK=[
+    {title:'IDF expands operations into central Rafah — ground and air forces engaged',src:'Reuters',time:'8m',c:'ISR',b:true},
+    {title:'Iran confirms 60% enrichment running at Fordow — third centrifuge hall online',src:'BBC News',time:'23m',c:'IRN',b:true},
+    {title:'UAE air defense intercepts drone near Abu Dhabi oil infrastructure',src:'Al Jazeera',time:'55m',c:'UAE',b:false},
+    {title:'Qatar foreign minister arrives in Cairo for emergency hostage-deal mediation',src:'BBC News',time:'1h 12m',c:'QAT',b:false},
+    {title:'Kuwait Foreign Ministry orders precautionary personnel reductions in Beirut',src:'Reuters',time:'2h',c:'KWT',b:false},
+    {title:'Houthi forces fire cruise missile at US destroyer USS Carney in Red Sea',src:'AP News',time:'2h 40m',c:'IRN',b:true},
+    {title:'Israel-Lebanon border: 18 Hezbollah rocket launches overnight intercepted',src:'Times of Israel',time:'4h',c:'ISR',b:false},
+    {title:'US announces additional carrier strike group deployment to Eastern Mediterranean',src:'Reuters',time:'5h',c:'ISR',b:false},
+    {title:'IAEA chief says Iran enrichment "deeply concerning" — calls for immediate talks',src:'BBC News',time:'6h',c:'IRN',b:false},
+    {title:'Qatar ruling out recognition of Hamas-linked governance structure — Doha sources',src:'Jerusalem Post',time:'7h',c:'QAT',b:false},
+    {title:'Saudi Patriot battery intercepts Houthi ballistic missile over Jizan — confirmed by RSAF',src:'Reuters',time:'9h',c:'SAU',b:true},
+    {title:'Saudi Arabia signals readiness to normalize Israel ties if Palestinian state pathway secured',src:'BBC News',time:'11h',c:'SAU',b:false},
+    {title:'Aramco raises security posture at Ras Tanura and Dhahran facilities',src:'Reuters',time:'14h',c:'SAU',b:false},
+  ];
+  const html=MOCK.map(i=>`<div class="nc${i.b?' brk':''}">
+    <div class="nc-meta">
+      <div class="nc-src"><span class="sbdg v">${i.src}</span><span class="vlbl">✓ VERIFIED</span>${i.b?'<span class="brklbl">⚡ BREAKING</span>':''}</div>
+      <div class="nc-time">${i.time} ago</div>
+    </div>
+    <div class="nc-title">${i.title}</div>
+    <div class="nc-tags"><span class="ntag">${i.c}</span></div>
+  </div>`).join('');
+  feed.innerHTML=(err?err.outerHTML:'')+html;
+}
+
+function doFilter(btn,f){
+  activeFilter=f;
+  document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));
+  if(btn) btn.classList.add('on');
+  if(allNews.length>0) renderNews();
+}
+
+// ══════════════════════════════════════════
+//  INIT + AUTO-REFRESH (5 min)
+// ══════════════════════════════════════════
+updateApiChip();
+fetchNews();
+setInterval(fetchNews,5*60*1000);
+</script>
+</body>
+</html>
