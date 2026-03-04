@@ -28,7 +28,8 @@ body{font-family:-apple-system,'Segoe UI',system-ui,sans-serif;background:var(--
 @media(max-width:700px){html,body{height:auto;overflow:visible}}
 
 /* ── SCANLINE OVERLAY ── */
-body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.04) 3px,rgba(0,0,0,.04) 4px);pointer-events:none;z-index:9999}
+/* inset shorthand not in Safari<14.1 — use explicit props */
+body::after{content:'';position:fixed;top:0;left:0;right:0;bottom:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.04) 3px,rgba(0,0,0,.04) 4px);pointer-events:none;z-index:9999}
 
 /* ── HEADER ── */
 .hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 18px;background:linear-gradient(180deg,#0d1529 0%,var(--bg1) 100%);border-bottom:1px solid rgba(0,200,255,.25);flex-shrink:0;gap:12px}
@@ -75,6 +76,8 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .sidebar::-webkit-scrollbar-thumb{background:var(--dim);border-radius:2px}
 /* Firefox scrollbar */
 .sidebar{scrollbar-width:thin;scrollbar-color:var(--dim) transparent}
+/* iOS momentum scrolling */
+.sidebar{-webkit-overflow-scrolling:touch}
 
 .sec-lbl{font-size:9px;font-weight:700;letter-spacing:3px;color:var(--muted);text-transform:uppercase;padding-bottom:6px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;margin-bottom:2px}
 .sec-lbl::before{content:'';width:3px;height:3px;border-radius:50%;background:var(--blue)}
@@ -125,7 +128,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 
 /* ── MAP ── */
 .map-wrap{position:relative;overflow:hidden;background:var(--bg0)}
-#map{width:100%;height:100%}
+#map{width:100%;height:100%;touch-action:none} /* touch-action:none lets Leaflet own all touch events */
 .map-badge{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:800;background:rgba(6,10,20,.92);border:1px solid rgba(0,200,255,.4);padding:5px 16px;border-radius:20px;font-size:9px;letter-spacing:3px;color:var(--blue);white-space:nowrap;pointer-events:none}
 .map-legend{position:absolute;bottom:28px;left:12px;z-index:800;background:rgba(6,10,20,.9);border:1px solid var(--border);padding:10px 12px;border-radius:6px}
 .ml-title{font-size:8px;color:var(--muted);letter-spacing:2px;margin-bottom:6px;text-transform:uppercase}
@@ -148,7 +151,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .np-body{flex:1;overflow-y:auto;padding:8px 10px;display:flex;flex-direction:column;gap:7px}
 .np-body::-webkit-scrollbar{width:3px}
 .np-body::-webkit-scrollbar-thumb{background:var(--dim);border-radius:2px}
-.np-body{scrollbar-width:thin;scrollbar-color:var(--dim) transparent}
+.np-body{scrollbar-width:thin;scrollbar-color:var(--dim) transparent;-webkit-overflow-scrolling:touch}
 
 /* News cards */
 .nc{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px;cursor:pointer;transition:all .2s;border-left:3px solid transparent}
@@ -201,89 +204,108 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .key-status.ok{background:rgba(0,229,122,.1);color:var(--green);border:1px solid rgba(0,229,122,.3)}
 .key-status.missing{background:rgba(255,123,41,.1);color:var(--orange);border:1px solid rgba(255,123,41,.3)}
 /* ════════════════════════════════════════
-   RESPONSIVE — TABLET  (700 – 1100 px)
+   RESPONSIVE — TABLET  (701 – 1100 px)
    ════════════════════════════════════════ */
-@media(max-width:1100px){
-  .layout{grid-template-columns:240px 1fr;grid-template-rows:1fr auto}
-  /* Map spans right column only */
+@media screen and (max-width:1100px) and (min-width:701px){
+  .layout{display:grid;grid-template-columns:230px 1fr;grid-template-rows:1fr 380px;height:calc(100vh - 90px)}
+  .sidebar{grid-column:1;grid-row:1 / 3;overflow-y:auto}
   .map-wrap{grid-column:2;grid-row:1}
-  /* Sidebar stays left */
-  .sidebar{grid-column:1;grid-row:1}
-  /* News panel spans full width on row 2 */
-  .news-panel{grid-column:1/-1;grid-row:2;max-height:360px;border-left:none;border-top:1px solid var(--border)}
-  .np-body{max-height:280px}
-  /* Smaller header title */
+  .news-panel{grid-column:2;grid-row:2;border-left:none;border-top:1px solid var(--border)}
+  .np-body{max-height:300px}
   .hdr-title{font-size:14px;letter-spacing:3px}
   .hdr-desc{display:none}
+  .brand-sub{display:none}
 }
 
 /* ════════════════════════════════════════
    RESPONSIVE — MOBILE  (≤ 700 px)
    ════════════════════════════════════════ */
-@media(max-width:700px){
-  /* Layout becomes a vertical flex stack */
-  .layout{display:flex;flex-direction:column;overflow:visible;flex:none}
+@media screen and (max-width:700px){
+  /* Unlock page scroll */
+  html,body{height:auto!important;overflow:visible!important;overflow-x:hidden!important}
+
+  /* Layout: vertical stack, no overflow clipping */
+  .layout{
+    display:-webkit-box;display:-ms-flexbox;display:flex;
+    -webkit-box-orient:vertical;-webkit-box-direction:normal;
+    -ms-flex-direction:column;flex-direction:column;
+    overflow:visible;-ms-flex:none;flex:none;width:100%
+  }
 
   /* ── Header ── */
-  .hdr{padding:8px 12px;flex-wrap:wrap;gap:8px}
-  .hdr-center{display:none}
-  .hdr-right{min-width:auto;gap:10px}
+  .hdr{padding:8px 10px;-ms-flex-wrap:wrap;flex-wrap:wrap;gap:6px}
+  .hdr-center,.hdr-desc,.brand-sub,.conn{display:none!important}
   .hdr-brand{min-width:auto}
-  .brand-id{font-size:11px;letter-spacing:3px}
-  .brand-sub{display:none}
-  .hdr-desc{display:none}
-  .clock{font-size:12px}
-  #apiChipWrap{display:none} /* move to news panel on mobile */
+  .brand-id{font-size:11px;letter-spacing:2px}
+  .hdr-right{min-width:auto;gap:8px}
+  .clock{font-size:11px;letter-spacing:0}
+  .upd{font-size:8px}
+  #apiChipWrap{display:none!important}
 
   /* ── Ticker ── */
-  .tick{font-size:10px;padding:0 18px}
+  .ticker-bar{padding:4px 0}
+  .tick{font-size:9.5px;padding:0 16px}
 
-  /* ── Sidebar — horizontal card scroll on mobile ── */
+  /* ── Sidebar: horizontal swipe strip ── */
   .sidebar{
-    flex-direction:row;overflow-x:auto;overflow-y:hidden;
-    padding:10px 12px;gap:10px;border-right:none;
-    border-bottom:1px solid var(--border);
-    scrollbar-width:none;-ms-overflow-style:none
+    -webkit-box-orient:horizontal;-webkit-box-direction:normal;
+    -ms-flex-direction:row;flex-direction:row;
+    overflow-x:auto;overflow-y:hidden;
+    -webkit-overflow-scrolling:touch; /* iOS momentum scroll */
+    overscroll-behavior-x:contain;
+    padding:8px 10px;gap:8px;
+    border-right:none;border-bottom:1px solid var(--border);
+    scrollbar-width:none;-ms-overflow-style:none;
+    -ms-flex-negative:0;flex-shrink:0
   }
   .sidebar::-webkit-scrollbar{display:none}
-  #ccards{display:flex;flex-direction:row;gap:8px;min-width:max-content}
-  .ccard{min-width:220px;transform:none!important}
-  .ccard:hover{transform:none!important}
-  /* Hide threat meter and timeline on mobile (sidebar is horizontal) */
-  #threatMeter,#timeline,.sec-lbl:not(:first-child){display:none}
+  #ccards{
+    display:-webkit-box;display:-ms-flexbox;display:flex;
+    -ms-flex-direction:row;flex-direction:row;
+    gap:8px;min-width:-webkit-max-content;min-width:max-content
+  }
+  .ccard{min-width:200px;max-width:230px;-ms-flex-negative:0;flex-shrink:0}
+  .ccard:hover,.ccard:active{-webkit-transform:none!important;transform:none!important}
+  #threatMeter,#timeline,.sec-lbl:not(:first-of-type){display:none!important}
 
-  /* ── Map — fixed height so Leaflet renders ── */
-  .map-wrap{height:340px;flex-shrink:0}
-  #map{height:340px}
-  .map-badge{font-size:8px;letter-spacing:2px;padding:4px 10px}
+  /* ── Map: explicit height so Leaflet initialises ── */
+  .map-wrap{height:320px;min-height:320px;-ms-flex-negative:0;flex-shrink:0;width:100%}
+  #map{height:320px!important;min-height:320px!important}
+  .map-badge{font-size:8px;letter-spacing:1px;padding:3px 8px;top:8px}
   .map-stats{top:8px;right:8px;gap:3px}
-  .ms-card{min-width:60px;padding:4px 7px}
-  .ms-v{font-size:13px}
+  .ms-card{min-width:56px;padding:3px 6px}
+  .ms-v{font-size:12px}
   .ms-l{font-size:7px}
-  .map-legend{display:none} /* hide legend on mobile to save space */
+  .map-legend{display:none}
 
-  /* ── News panel ── */
-  .news-panel{flex:none;border-left:none;border-top:1px solid var(--border)}
-  .np-body{max-height:none;overflow-y:visible}
-  /* Show api chip in news panel header instead */
-  .np-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
+  /* ── News panel: natural height, page scrolls ── */
+  .news-panel{
+    -ms-flex:none;flex:none;
+    border-left:none;border-top:1px solid var(--border);
+    min-height:0;overflow:visible
+  }
+  .np-body{
+    max-height:none!important;overflow-y:visible!important;
+    -webkit-overflow-scrolling:auto
+  }
+  .np-filters{gap:4px;padding:6px 10px}
 
-  /* ── Buttons / touch targets (44px minimum) ── */
-  .fb{min-height:36px;padding:7px 11px;font-size:10px}
-  .modal-btn{min-height:44px;padding:12px 20px}
-  .modal-close{min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center}
-  .nc{padding:12px} /* more breathing room on touch */
+  /* ── Touch targets: minimum 44px ── */
+  .fb{min-height:40px;padding:8px 11px;font-size:10px}
+  .nc{padding:12px;min-height:44px}
+  .modal-btn{min-height:44px;padding:10px 18px}
+  .modal-close{min-width:44px;min-height:44px;display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-align:center;-ms-flex-align:center;align-items:center;-webkit-box-pack:center;-ms-flex-pack:center;justify-content:center}
 
   /* ── Modal ── */
-  .modal{width:calc(100vw - 24px);max-height:90vh;overflow-y:auto}
+  .modal-bg{-webkit-box-align:flex-end;-ms-flex-align:flex-end;align-items:flex-end} /* sheet from bottom on mobile */
+  .modal{width:100%;border-radius:16px 16px 0 0;max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 }
 
-/* Extra-small phones */
-@media(max-width:380px){
-  .hdr-title{font-size:11px;letter-spacing:2px}
-  .ccard{min-width:190px}
-  .map-wrap{height:280px}
-  #map{height:280px}
+/* Extra-small (≤ 380 px) */
+@media screen and (max-width:380px){
+  .ccard{min-width:175px}
+  .map-wrap,.map-wrap #map{height:270px!important;min-height:270px!important}
+  .hdr{padding:6px 8px}
 }
 
 /* Leaflet popup override */
@@ -314,7 +336,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
     <div class="conn"><div class="conn-dot" id="connDot"></div><span id="connTxt">CONNECTED</span></div>
     <div class="live-pill"><div class="live-dot"></div><span class="live-lbl">LIVE</span></div>
     <div id="apiChipWrap" style="cursor:pointer" onclick="openSettings()">
-      <div class="api-chip" id="apiChip" style="color:var(--orange);border-color:var(--orange)">⚙ NEWSAPI: OFF</div>
+      <div class="api-chip" id="apiChip" style="color:var(--orange);border-color:var(--orange)">⚙ GNEWS: OFF</div>
     </div>
     <div class="clock-wrap">
       <div class="clock" id="clk">--:--:-- UTC</div>
@@ -386,17 +408,17 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 <div class="modal-bg" id="settingsModal" onclick="handleModalBgClick(event)">
   <div class="modal" onclick="event.stopPropagation()">
     <div class="modal-hdr">
-      <div class="modal-title">⚙ NEWSAPI CONFIGURATION</div>
+      <div class="modal-title">⚙ GNEWS API CONFIGURATION</div>
       <button class="modal-close" onclick="closeSettings()">✕</button>
     </div>
 
     <div class="modal-section">
       <div class="modal-lbl">API Key</div>
-      <input class="modal-input" id="apiKeyInput" type="password" placeholder="Paste your NewsAPI key here…" autocomplete="off" spellcheck="false"/>
+      <input class="modal-input" id="apiKeyInput" type="password" placeholder="Paste your GNews API key here…" autocomplete="off" spellcheck="false"/>
       <div id="keyStatus" class="key-status missing" style="display:none"></div>
       <div class="modal-hint">
-        Get a free key at <a href="https://newsapi.org/register" target="_blank">newsapi.org/register</a>
-        — free tier gives 100 requests/day. Key is saved locally in your browser.
+        Get a free key at <a href="https://gnews.io/register" target="_blank">gnews.io/register</a>
+        — free tier gives 100 requests/day with full CORS support. Key is saved locally in your browser.
       </div>
     </div>
 
@@ -439,6 +461,47 @@ const LS={
   set(k,v){try{localStorage.setItem(k,v)}catch(e){}},
   getJSON(k,def){try{const v=localStorage.getItem(k);return v?JSON.parse(v):def}catch(e){return def}},
 };
+
+// ── Network quality helpers ──
+// Returns timeout in ms scaled to connection quality
+function adaptiveTimeout(base){
+  try{
+    var c=navigator.connection||navigator.mozConnection||navigator.webkitConnection;
+    if(c){
+      if(c.effectiveType==='slow-2g'||c.effectiveType==='2g') return base*3;
+      if(c.effectiveType==='3g') return base*2;
+    }
+  }catch(e){}
+  return base;
+}
+
+// Retry a promise-returning function once after `delay` ms on failure
+function withRetry(fn, delay){
+  return fn().catch(function(){
+    return new Promise(function(resolve,reject){
+      setTimeout(function(){fn().then(resolve).catch(reject);}, delay||2000);
+    });
+  });
+}
+
+// Sleep helper
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
+
+// ── Online / offline banner ──
+var _offlineBanner=null;
+function showOfflineBanner(){
+  if(_offlineBanner) return;
+  _offlineBanner=document.createElement('div');
+  _offlineBanner.id='offlineBanner';
+  _offlineBanner.style.cssText='position:fixed;top:0;left:0;right:0;z-index:20000;background:#ff2d55;color:#fff;font-size:11px;font-weight:700;letter-spacing:2px;text-align:center;padding:6px;';
+  _offlineBanner.textContent='⚠ NO INTERNET CONNECTION — Dashboard operating in offline mode';
+  document.body.prepend(_offlineBanner);
+}
+function hideOfflineBanner(){
+  if(_offlineBanner){_offlineBanner.remove();_offlineBanner=null;}
+}
+window.addEventListener('offline',function(){showOfflineBanner();setConn('offline');});
+window.addEventListener('online', function(){hideOfflineBanner();fetchNews();});
 
 // ══════════════════════════════════════════
 //  CLOCK
@@ -713,10 +776,12 @@ function focusCountry(code){
 }
 
 // ══════════════════════════════════════════
-//  NEWSAPI SETTINGS & RATE LIMITER
+//  GNEWS API SETTINGS & RATE LIMITER
+//  Uses gnews.io — free tier has proper CORS support for browser use.
+//  NewsAPI free tier blocks CORS from deployed domains — do NOT use it here.
 // ══════════════════════════════════════════
-const KEY_STORE   = 'meid_newsapi_key';
-const USAGE_STORE = 'meid_newsapi_usage';
+const KEY_STORE   = 'meid_gnews_key';   // changed from newsapi key
+const USAGE_STORE = 'meid_gnews_usage';
 const DAILY_LIMIT = 100;
 
 function getApiKey(){ return LS.get(KEY_STORE)||''; }
@@ -740,13 +805,13 @@ function updateApiChip(){
   const u=getUsage();
   const left=DAILY_LIMIT-u.count;
   if(!key){
-    chip.textContent='⚙ NEWSAPI: OFF';
+    chip.textContent='⚙ GNEWS: OFF';
     chip.style.color='var(--orange)';chip.style.borderColor='var(--orange)';
   } else if(left<=0){
-    chip.textContent='⚙ NEWSAPI: LIMIT';
+    chip.textContent='⚙ GNEWS: LIMIT';
     chip.style.color='var(--red)';chip.style.borderColor='var(--red)';
   } else {
-    chip.textContent=`⚙ NEWSAPI: ${left}/100`;
+    chip.textContent='⚙ GNEWS: '+left+'/100';
     chip.style.color= left<20?'var(--red)':left<50?'var(--yellow)':'var(--green)';
     chip.style.borderColor= left<20?'var(--red)':left<50?'var(--yellow)':'var(--green)';
   }
@@ -799,31 +864,57 @@ function resetUsage(){
   updateApiChip();
 }
 
-// ── NewsAPI fetch ──
-async function fetchNewsAPI(){
-  const key=getApiKey();
-  if(!key||!canRequest()) return [];
-  const q=encodeURIComponent(
-    'israel OR iran OR "saudi arabia" OR UAE OR kuwait OR qatar OR gaza OR hamas OR hezbollah OR houthi OR "middle east"'
-  );
-  const url=`https://newsapi.org/v2/everything?q=${q}&language=en&sortBy=publishedAt&pageSize=20&apiKey=${key}`;
-  const r=await fetch(url);
-  if(!r.ok) throw new Error('NewsAPI HTTP '+r.status);
-  const j=await r.json();
-  if(j.status!=='ok') throw new Error(j.message||'NewsAPI error');
+// ── GNews API fetch (gnews.io — free tier supports CORS from any domain) ──
+// Sign up free at https://gnews.io — 100 requests/day on free plan
+async function fetchGNewsAPI(){
+  var key=getApiKey();
+  if(!key) return [];
+  if(!canRequest()){
+    updateApiChip(); // ensure chip shows LIMIT state
+    return [];
+  }
+  if(!navigator.onLine) return [];
+  var q=encodeURIComponent('israel OR iran OR "saudi arabia" OR UAE OR kuwait OR qatar OR gaza OR hamas OR hezbollah OR houthi');
+  var url='https://gnews.io/api/v4/search?q='+q+'&lang=en&country=any&max=20&sortby=publishedAt&apikey='+key;
+  var r;
+  try{
+    r=await fetch(url,{signal:mkSignal(adaptiveTimeout(12000))});
+  }catch(e){
+    // Network error — don't count against quota
+    throw new Error('GNews network error: '+e.message);
+  }
+  // Handle quota / auth errors gracefully
+  if(r.status===401||r.status===403){
+    var chip=document.getElementById('apiChip');
+    chip.textContent='⚙ GNEWS: BAD KEY';
+    chip.style.color='var(--red)';chip.style.borderColor='var(--red)';
+    throw new Error('GNews invalid key');
+  }
+  if(r.status===429){
+    var chip2=document.getElementById('apiChip');
+    chip2.textContent='⚙ GNEWS: QUOTA';
+    chip2.style.color='var(--red)';chip2.style.borderColor='var(--red)';
+    throw new Error('GNews quota exceeded');
+  }
+  if(!r.ok) throw new Error('GNews HTTP '+r.status);
+  var j=await r.json();
+  // GNews wraps errors in j.errors array
+  if(j.errors&&j.errors.length) throw new Error('GNews: '+j.errors[0]);
+  if(!j.articles||!j.articles.length) return [];
   incrementUsage();
   return j.articles
-    .filter(a=>a.title&&!a.title.includes('[Removed]'))
-    .map(a=>({
-      title:a.title,
-      description:a.description||'',
-      link:a.url||'',
-      pubDate:a.publishedAt||'',
-      _src:a.source?.name||'NewsAPI',
-      _countries:tagCountries((a.title||'')+' '+(a.description||'')),
-      _brk:/breaking|urgent|alert/i.test(a.title||''),
-      _fromNewsAPI:true,
-    }));
+    .filter(function(a){return a.title&&!a.title.includes('[Removed]');})
+    .map(function(a){
+      var srcName=a.source&&a.source.name?a.source.name:'GNews';
+      return{
+        title:a.title,description:a.description||'',
+        link:a.url||'',pubDate:a.publishedAt||'',
+        _src:srcName,
+        _countries:tagCountries((a.title||'')+' '+(a.description||'')),
+        _brk:/breaking|urgent|alert/i.test(a.title||''),
+        _fromGNews:true,
+      };
+    });
 }
 
 // ══════════════════════════════════════════
@@ -841,15 +932,28 @@ const KW={
 };
 
 const TRUSTED=[
-  {n:'Reuters',         d:['reuters.com'],         v:true},
-  {n:'BBC News',        d:['bbc.co.uk','bbc.com'], v:true},
-  {n:'Al Jazeera',      d:['aljazeera.com','aljazeera.net'],v:true},
-  {n:'AP News',         d:['apnews.com'],           v:true},
-  {n:'Times of Israel', d:['timesofisrael.com'],    v:true},
-  {n:'Jerusalem Post',  d:['jpost.com'],            v:true},
-  {n:'Haaretz',         d:['haaretz.com'],          v:true},
-  {n:'Middle East Eye', d:['middleeasteye.net'],    v:false},
-  {n:'The Guardian',    d:['theguardian.com'],      v:true},
+  {n:'Reuters',          d:['reuters.com'],                    v:true},
+  {n:'BBC News',         d:['bbc.co.uk','bbc.com'],            v:true},
+  {n:'Al Jazeera',       d:['aljazeera.com','aljazeera.net'],  v:true},
+  {n:'AP News',          d:['apnews.com'],                     v:true},
+  {n:'CNN',              d:['cnn.com'],                        v:true},
+  {n:'NBC News',         d:['nbcnews.com'],                    v:true},
+  {n:'Sky News',         d:['news.sky.com','skynews.com'],     v:true},
+  {n:'DW News',          d:['dw.com'],                        v:true},
+  {n:'Times of Israel',  d:['timesofisrael.com'],              v:true},
+  {n:'Jerusalem Post',   d:['jpost.com'],                      v:true},
+  {n:'Haaretz',          d:['haaretz.com'],                    v:true},
+  {n:'i24 News',         d:['i24news.tv'],                     v:true},
+  {n:'New York Times',   d:['nytimes.com'],                    v:true},
+  {n:'France 24',        d:['france24.com'],                   v:true},
+  {n:'The Guardian',     d:['theguardian.com'],                v:true},
+  {n:'Arab News',        d:['arabnews.com'],                   v:true},
+  {n:'Middle East Eye',  d:['middleeasteye.net'],              v:false},
+  {n:'Axios',            d:['axios.com'],                      v:true},
+  {n:'Politico',         d:['politico.com'],                   v:true},
+  {n:'Foreign Policy',   d:['foreignpolicy.com'],              v:true},
+  {n:'GNews',            d:['gnews.io'],                       v:true},
+  {n:'Google News',      d:['news.google.com'],                v:true},
 ];
 
 function srcOf(link){
@@ -871,133 +975,235 @@ function ago(ds){
   return Math.floor(diff/86400)+'d ago';
 }
 
-// ── Feed sources (Reuters public RSS was removed; replaced with working alternatives) ──
+// ══════════════════════════════════════════
+//  FEED SOURCES
+//  Google News topic feeds (primary — aggregate hundreds of outlets, work reliably via rss2json)
+//  + direct RSS feeds (secondary)
+// ══════════════════════════════════════════
+var E=encodeURIComponent;
+const GN='https://news.google.com/rss/search?hl=en&gl=US&ceid=US%3Aen&q=';
 const FEEDS=[
-  {url:'https://feeds.bbci.co.uk/news/world/middle_east/rss.xml',   name:'BBC News'},
-  {url:'https://www.aljazeera.com/xml/rss/all.xml',                 name:'Al Jazeera'},
-  {url:'https://www.timesofisrael.com/feed/',                       name:'Times of Israel'},
-  {url:'https://www.jpost.com/rss/rssfeedsheadlines.aspx',          name:'Jerusalem Post'},
-  {url:'https://rss.nytimes.com/services/xml/rss/nyt/MiddleEast.xml',name:'New York Times'},
-  {url:'https://www.france24.com/en/middle-east/rss',               name:'France 24'},
-  {url:'https://www.theguardian.com/world/middleeast/rss',          name:'The Guardian'},
-  {url:'https://www.arabnews.com/rss.xml',                          name:'Arab News'},
+  // ── Google News topic feeds (most reliable) ──
+  {url:GN+E('israel idf war hamas 2025'),          name:'Google·Israel',    gn:true},
+  {url:GN+E('iran nuclear irgc sanctions'),         name:'Google·Iran',      gn:true},
+  {url:GN+E('saudi arabia houthi yemen attack'),    name:'Google·Saudi',     gn:true},
+  {url:GN+E('gaza ceasefire hostages'),             name:'Google·Gaza',      gn:true},
+  {url:GN+E('hezbollah lebanon idf border'),        name:'Google·Lebanon',   gn:true},
+  {url:GN+E('middle east conflict war 2025'),       name:'Google·ME',        gn:true},
+  {url:GN+E('uae kuwait qatar gulf diplomacy'),     name:'Google·Gulf',      gn:true},
+  {url:GN+E('red sea houthi shipping attack'),      name:'Google·RedSea',    gn:true},
+  // ── Direct RSS feeds ──
+  {url:'https://feeds.bbci.co.uk/news/world/middle_east/rss.xml',      name:'BBC News'},
+  {url:'https://www.aljazeera.com/xml/rss/all.xml',                    name:'Al Jazeera'},
+  {url:'https://www.timesofisrael.com/feed/',                          name:'Times of Israel'},
+  {url:'https://www.jpost.com/rss/rssfeedsheadlines.aspx',             name:'Jerusalem Post'},
+  {url:'https://rss.nytimes.com/services/xml/rss/nyt/MiddleEast.xml',  name:'New York Times'},
+  {url:'https://www.france24.com/en/middle-east/rss',                  name:'France 24'},
+  {url:'https://www.theguardian.com/world/middleeast/rss',             name:'The Guardian'},
+  {url:'https://www.arabnews.com/rss.xml',                             name:'Arab News'},
+  {url:'https://www.i24news.tv/en/rss',                                name:'i24 News'},
+  {url:'https://www.middleeasteye.net/rss',                            name:'Middle East Eye'},
 ];
 
-// ── Parse raw RSS/XML string via DOMParser ──
+// ── DOMParser-based RSS/Atom/XML parser (no optional chaining — works in all browsers) ──
 function parseRSSXML(xmlStr, src){
   try{
-    const xml=new DOMParser().parseFromString(xmlStr,'text/xml');
-    const parseErr=xml.querySelector('parsererror');
-    if(parseErr) throw new Error('XML parse error');
-    return [...xml.querySelectorAll('item')].map(item=>{
-      const g=tag=>item.querySelector(tag)?.textContent?.trim()||'';
-      const a=(tag,attr)=>item.querySelector(tag)?.getAttribute(attr)||'';
-      const title=g('title');
-      const desc=g('description')||g('summary');
-      const link=g('link')||a('link','href')||g('guid');
-      const pubDate=g('pubDate')||g('published')||g('updated');
-      if(!title||title.includes('CDATA')) return null;
-      return{title,description:desc,link,pubDate,_src:src,
+    var parser=new DOMParser();
+    var xml=parser.parseFromString(xmlStr,'text/xml');
+    var err=xml.getElementsByTagName('parsererror');
+    if(err.length) throw new Error('parse error');
+    var items=xml.getElementsByTagName('item');
+    if(!items.length) items=xml.getElementsByTagName('entry'); // Atom
+    var result=[];
+    for(var i=0;i<items.length;i++){
+      var item=items[i];
+      var g=function(tag){
+        var el=item.getElementsByTagName(tag);
+        return el.length&&el[0].textContent?el[0].textContent.trim():'';
+      };
+      var title=g('title');
+      var desc=g('description')||g('summary')||g('content');
+      var link=g('link')||g('guid');
+      // Atom <link href="...">
+      var linkEl=item.getElementsByTagName('link');
+      if(linkEl.length&&linkEl[0].getAttribute('href')) link=linkEl[0].getAttribute('href');
+      var pubDate=g('pubDate')||g('published')||g('updated');
+      if(!title||title==='CDATA') continue;
+      // Strip CDATA wrappers if any
+      title=title.replace(/^<!\[CDATA\[|\]\]>$/g,'').trim();
+      desc=desc.replace(/^<!\[CDATA\[|\]\]>$/g,'').trim();
+      result.push({title:title,description:desc,link:link,pubDate:pubDate,_src:src,
         _countries:tagCountries(title+' '+desc),
-        _brk:/breaking|urgent|alert/i.test(title)};
-    }).filter(Boolean);
+        _brk:/breaking|urgent|alert/i.test(title)});
+    }
+    return result;
   }catch(e){return[];}
 }
 
-// ── 3-proxy waterfall: rss2json → allorigins → corsproxy ──
-async function fetchFeed(feedUrl, src){
-  const T=7000; // 7 s timeout per proxy attempt
-
-  // PROXY 1 — rss2json.com (returns parsed JSON)
-  try{
-    const r=await fetch(
-      `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}&count=25`,
-      {signal:mkSignal(T)}
-    );
-    if(r.ok){
-      const j=await r.json();
-      if(j.status==='ok'&&j.items?.length){
-        return j.items.map(i=>({
-          title:i.title||'',description:i.description||'',
-          link:i.link||'',pubDate:i.pubDate||'',_src:src,
-          _countries:tagCountries((i.title||'')+' '+(i.description||'')),
-          _brk:/breaking|urgent|alert/i.test(i.title||''),
-        })).filter(i=>i.title);
-      }
-    }
-  }catch(e){/* try next */}
-
-  // PROXY 2 — allorigins.win (returns raw XML inside JSON wrapper)
-  try{
-    const r=await fetch(
-      `https://api.allorigins.win/get?url=${encodeURIComponent(feedUrl)}`,
-      {signal:mkSignal(T)}
-    );
-    if(r.ok){
-      const j=await r.json();
-      if(j.contents&&j.status?.http_code===200){
-        const items=parseRSSXML(j.contents,src);
-        if(items.length) return items;
-      }
-    }
-  }catch(e){/* try next */}
-
-  // PROXY 3 — corsproxy.io (returns raw XML)
-  try{
-    const r=await fetch(
-      `https://corsproxy.io/?${encodeURIComponent(feedUrl)}`,
-      {signal:mkSignal(T)}
-    );
-    if(r.ok){
-      const text=await r.text();
-      const items=parseRSSXML(text,src);
-      if(items.length) return items;
-    }
-  }catch(e){/* all failed */}
-
-  throw new Error('All proxies failed for '+src);
+// ── Cross-browser firstSuccess: runs promises in parallel, resolves with first non-empty result ──
+function firstSuccess(promises){
+  return new Promise(function(resolve,reject){
+    var remaining=promises.length;
+    if(!remaining){reject(new Error('no promises'));return;}
+    promises.forEach(function(p){
+      Promise.resolve(p).then(function(v){
+        if(v&&v.length) resolve(v); // success with data
+        else{remaining--;if(!remaining)reject(new Error('empty results'));}
+      }).catch(function(){
+        remaining--;
+        if(!remaining)reject(new Error('all failed'));
+      });
+    });
+  });
 }
+
+// ── Fetch a single feed via all 3 proxies in parallel, take first success ──
+async function fetchFeed(feedUrl, src, isGN){
+  const T=adaptiveTimeout(9000);
+  // rss2json handles Google News very well — always include it
+  var p1=fetch(
+    'https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(feedUrl)+'&count=30',
+    {signal:mkSignal(T)}
+  ).then(function(r){
+    if(!r.ok) throw new Error('rss2json '+r.status);
+    return r.json();
+  }).then(function(j){
+    if(j.status!=='ok'||!j.items||!j.items.length) throw new Error('rss2json empty');
+    return j.items.filter(function(i){return i.title;}).map(function(i){
+      return{title:i.title||'',description:i.description||'',link:i.link||'',
+        pubDate:i.pubDate||'',_src:src,
+        _countries:tagCountries((i.title||'')+' '+(i.description||'')),
+        _brk:/breaking|urgent|alert/i.test(i.title||'')};
+    });
+  });
+
+  // For Google News feeds, rss2json is enough — skip extra proxies to save quota
+  if(isGN) return p1;
+
+  // allorigins — no optional chaining for old Safari
+  var p2=fetch(
+    'https://api.allorigins.win/get?url='+encodeURIComponent(feedUrl),
+    {signal:mkSignal(T)}
+  ).then(function(r){
+    if(!r.ok) throw new Error('allorigins '+r.status);
+    return r.json();
+  }).then(function(j){
+    var code=j&&j.status?j.status.http_code:0;
+    if(!j||!j.contents||code!==200) throw new Error('allorigins bad');
+    var items=parseRSSXML(j.contents,src);
+    if(!items.length) throw new Error('allorigins empty');
+    return items;
+  });
+
+  // corsproxy.io
+  var p3=fetch(
+    'https://corsproxy.io/?'+encodeURIComponent(feedUrl),
+    {signal:mkSignal(T)}
+  ).then(function(r){
+    if(!r.ok) throw new Error('corsproxy '+r.status);
+    return r.text();
+  }).then(function(txt){
+    var items=parseRSSXML(txt,src);
+    if(!items.length) throw new Error('corsproxy empty');
+    return items;
+  });
+
+  return firstSuccess([p1,p2,p3]);
+}
+
+// Tracks consecutive total failures for escalating retry delay
+var _fetchFailCount=0;
 
 async function fetchNews(){
   const feed=document.getElementById('nfeed');
-  feed.innerHTML=`<div class="spin-wrap"><div class="spinner"></div><div class="spin-lbl">FETCHING INTELLIGENCE DATA…</div></div>`;
+  feed.innerHTML='<div class="spin-wrap"><div class="spinner"></div><div class="spin-lbl">FETCHING INTELLIGENCE DATA\u2026</div></div>';
   setConn('syncing');
 
-  // Run all feeds + NewsAPI concurrently
-  const [rssResults, napiItems]=await Promise.all([
-    Promise.allSettled(FEEDS.map(f=>fetchFeed(f.url,f.name))),
-    fetchNewsAPI().catch(()=>[]),
-  ]);
-
-  // Tally successes for status display
-  const ok=rssResults.filter(r=>r.status==='fulfilled'&&r.value.length>0);
-  const fail=rssResults.filter(r=>r.status==='rejected'||!r.value?.length);
-
-  allNews=[];
-  rssResults.forEach(r=>{ if(r.status==='fulfilled') allNews.push(...r.value); });
-
-  // Merge NewsAPI — dedupe by title prefix
-  const seen=new Set(allNews.map(x=>x.title.toLowerCase().slice(0,60)));
-  napiItems.filter(a=>!seen.has(a.title.toLowerCase().slice(0,60))).forEach(a=>allNews.push(a));
-
-  allNews.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
-  updateApiChip();
-
-  if(allNews.length===0){
+  // Abort immediately if browser reports no connection
+  if(!navigator.onLine){
     setConn('offline');
-    feed.innerHTML=`<div class="err">
-      ⚠ All ${FEEDS.length} live feeds unreachable.<br>
-      <span style="font-size:9px;opacity:.7">This usually means the page is opened as a local file.<br>
-      Deploy to Cloudflare Pages for live data — displaying cached intelligence below.</span>
-    </div>`;
+    showOfflineBanner();
+    feed.innerHTML='<div class="err">\u26a0 No internet connection detected.<br><span style="font-size:9px;opacity:.7">Check your network. Dashboard will auto-refresh when reconnected.</span></div>';
     renderFallback();
     return;
   }
 
-  setConn('ok');
-  const ts=new Date().toLocaleTimeString();
-  document.getElementById('upd').textContent=`${ok.length}/${FEEDS.length} feeds live · ${ts}`;
-  if(fail.length>0) console.warn('MEID: Failed feeds:',fail.map((_,i)=>FEEDS[i]?.name).filter(Boolean));
+  // Round 1 — fetch all feeds in parallel
+  var round1=await Promise.allSettled(FEEDS.map(function(f){
+    return fetchFeed(f.url,f.name,f.gn||false);
+  }));
+
+  // Identify which feeds failed
+  var failedFeeds=[];
+  var ok=0;
+  allNews=[];
+  round1.forEach(function(r,i){
+    if(r.status==='fulfilled'&&r.value&&r.value.length){
+      ok++;
+      allNews=allNews.concat(r.value);
+    } else {
+      failedFeeds.push(FEEDS[i]);
+    }
+  });
+
+  // Round 2 — retry failed feeds once (with 1.5s delay) if not too many failed
+  if(failedFeeds.length>0 && failedFeeds.length<=FEEDS.length){
+    await sleep(1500);
+    var round2=await Promise.allSettled(failedFeeds.map(function(f){
+      return fetchFeed(f.url,f.name,f.gn||false);
+    }));
+    round2.forEach(function(r){
+      if(r.status==='fulfilled'&&r.value&&r.value.length){
+        ok++;
+        allNews=allNews.concat(r.value);
+      }
+    });
+  }
+
+  // GNews API (supplemental — runs after RSS so quota is preserved)
+  const napiItems=await fetchGNewsAPI().catch(function(){return[];});
+
+  // Merge GNews — dedupe by title prefix
+  var seen={};
+  allNews.forEach(function(x){seen[x.title.toLowerCase().slice(0,60)]=1;});
+  napiItems.forEach(function(a){
+    if(!seen[a.title.toLowerCase().slice(0,60)]) allNews.push(a);
+  });
+
+  // Sort newest first, strip duplicates across feeds
+  allNews.sort(function(a,b){return new Date(b.pubDate)-new Date(a.pubDate);});
+  var deduped=[],seenTitles={};
+  allNews.forEach(function(a){
+    var k=a.title.toLowerCase().slice(0,55);
+    if(!seenTitles[k]){seenTitles[k]=1;deduped.push(a);}
+  });
+  allNews=deduped;
+
+  updateApiChip();
+
+  if(allNews.length===0){
+    _fetchFailCount++;
+    setConn('offline');
+    var retryMs=Math.min(30000, 5000*_fetchFailCount); // escalating retry: 5s, 10s, 15s … 30s
+    feed.innerHTML='<div class="err">\u26a0 All live feeds unreachable.<br>'
+      +'<span style="font-size:9px;opacity:.7">Check CORS restrictions — deploy to Cloudflare Pages for best compatibility. '
+      +'Auto-retrying in '+Math.round(retryMs/1000)+'s…</span></div>';
+    renderFallback();
+    setTimeout(fetchNews, retryMs);
+    return;
+  }
+
+  // Partial success warning
+  _fetchFailCount=0;
+  var totalLive=ok;
+  var statusTxt=totalLive+'/'+FEEDS.length+' feeds live \xb7 '+new Date().toLocaleTimeString();
+  if(totalLive<FEEDS.length*0.4){
+    setConn('syncing'); // amber — partial
+    statusTxt='\u26a0 '+statusTxt+' (limited)';
+  } else {
+    setConn('ok');
+  }
+  document.getElementById('upd').textContent=statusTxt;
   renderNews();
 }
 
